@@ -20,7 +20,7 @@ def fullroutine():
     timelabel = now.strftime('%y%m%d-%H%M%S')
 
     #Import candidate variants
-    lCandidate = va.importfHGVS
+    lCandidate = va.importfHGVS()
 
     #MVI Annotation
     startmvi = time.time()
