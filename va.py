@@ -529,7 +529,7 @@ def filtervariant(listanno, name = ""):
                         + identifier
                         + '\n'
                         + 'Date performed: '
-                        + timelabel
+                        + name
                         + '\n'
                         + 'Total number of samples: '
                         + str(len(listanno))
