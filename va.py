@@ -407,7 +407,6 @@ def filtervariant(listanno, name = ""):
     overfivepc = []
     candidate = []
     now = datetime.datetime.now()
-    name
 
     for data in listanno:
         nodataflag = False

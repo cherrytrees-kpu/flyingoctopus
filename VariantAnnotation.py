@@ -12,6 +12,7 @@ import requests
 import myvariant
 import time
 import va
+import datetime
 
 def fullroutine():
     #Get unique job ID name
