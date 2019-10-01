@@ -82,7 +82,6 @@ def filteraffected(listAffected, listControl):
     print('Filtering completed.')
     return listCandidate
 
-
 def importHGVS(listAffected, listControl):
     """
     importHGVS - imports HGVS IDs into the program for filtering

@@ -19,19 +19,8 @@ def fullroutine():
     now = datetime.datetime.now()
     timelabel = now.strftime('%y%m%d-%H%M%S')
 
-    #Import all of the HGVS files into the Program
-    lAffected = []
-    lControl = []
-    i = 0
-
-    numFiles = int(input('How many files individuals would you like to use: '))
-    while i < numFiles:
-        va.importHGVS(lAffected, lControl)
-        i = i + 1
-
-    lCandidate = va.filteraffected(lAffected, lControl)
-    filterfname = "candidate_" + timelabel
-    va.outputHGVS(lCandidate, filterfname)
+    #Import candidate variants
+    lCandidate = va.importfHGVS
 
     #MVI Annotation
     startmvi = time.time()
