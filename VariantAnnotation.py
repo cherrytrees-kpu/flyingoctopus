@@ -27,23 +27,24 @@ def fullroutine():
     lmvi = va.annotmvi(lCandidate)
     endmvi = time.time()
     print('Total MVI annotation run time: ' + str(endmvi - startmvi) + '\n')
+    #Export MVI
+    mvifname = 'mvi_annotation_' + timelabel + '.txt'
+    va.exportanno(lmvi, mvifname)
     #VEP annotation
     startvep = time.time()
     lvep = va.annotvep(lCandidate)
     endvep = time.time()
-    print ('Total VEP annotation run time: '+ + str(endvep - startvep) + '\n')
-    #Export MVI
-    mvifname = 'mvi_annotation_' + timelabel + '.txt'
-    va.exportanno(lmvi, mvifname)
+    print ('Total VEP annotation run time: '+  str(endvep - startvep) + '\n')
     #Export VEP
     vepfname = 'vep_annotation_' + timelabel + '.txt'
     va.exportanno(lvep, vepfname)
     #Export combined annotations
     lanno = va.combineanno(lmvi, lvep)
     annofname = 'annotated_mutations_' + timelabel + '.txt'
-    va.writeanno(lanno)
+    va.writeanno(lanno, annofname)
     #Filtervariant
     va.filtervariant(lanno, timelabel)
+    print('Complete')
 ##### Program Start ##################################################################
 #GLOBAL VARIABLES
 EXIT_PROGRAM = False
