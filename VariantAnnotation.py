@@ -20,7 +20,7 @@ def fullroutine():
     timelabel = now.strftime('%y%m%d-%H%M%S')
 
     #Import all of the HGVS files into the Program
-    listAffected = []
+    lAffected = []
     lControl = []
     i = 0
 
