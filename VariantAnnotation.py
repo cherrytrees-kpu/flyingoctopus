@@ -91,7 +91,7 @@ while EXIT_PROGRAM == False:
             i = i + 1
 
         lCandidate = va.filteraffected(lAffected, lControl)
-        va.outputHGVS(lCandidate)
+        va.outputHGVS(lCandidate, "candidate")
         end = time.time()
         print('Total run time: ' + str(end - start) + '\n')
 
