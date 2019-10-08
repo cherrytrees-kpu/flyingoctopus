@@ -340,7 +340,7 @@ def annotvep(lc):
         decoded = r.json()
 
         #Check for missing data
-        if len(data) < 200:
+        if len(decoded) < 200:
             for id in data:
                 found = False
                 for annot in decoded:
