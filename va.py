@@ -339,6 +339,17 @@ def annotvep(lc):
         #Store as list of dictionaries
         decoded = r.json()
 
+        #Check for missing data
+        if len(data) < 200:
+            for id in data:
+                found = False
+                for annot in decoded:
+                    if id == annot['id']:
+                        found = True
+                if found == False:
+                    pos = data.index(id)
+                    decoded.insert(pos - 1, 'NULL')
+
         #Add these results to annot list
         for y in decoded:
             annotlist.append(y)
@@ -595,18 +606,18 @@ def combineanno(listmvi, listvep):
     """
     al = []
     lc = importfHGVS()
-    i = 0
     vi = 0
 
-    while i < len(lc):
+    for id in lc:
         found = False
         consequence = 'N/A'
+        pos = lc.index(id)
 
-        if i%100 == 0:
-            print(str(i) + ' out of ' + str(len(lc)) + ' completed....')
+        if pos%1000 == 0:
+            print(str(pos) + ' out of ' + str(len(lc)) + ' completed....')
 
         while (found == False) and vi < len(listvep):
-            if lc[i] == listvep[vi]['id']:
+            if id == listvep[vi]['id']:
                 found = True
                 consequence = listvep[vi]['most_severe_consequence']
             vi = vi + 1
