@@ -1,7 +1,5 @@
 """
-VariantAnnotation.py v13 - handles variant annotation tasks
-
-Version Date: August 27th, 2019
+VariantAnnotation.py - handles variant annotation tasks
 
 Author: Michael Ke
 

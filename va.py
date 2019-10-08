@@ -1,15 +1,5 @@
 """
-va.py v13 - wrapper for myvariant.info and Ensembl's VEP
-
-Version date: August 27th, 2019
-
-If running standalone, the following modules need to be imported:
-json
-sys
-requests
-myvariant
-va
-time
+va.py - wrapper for myvariant.info and Ensembl's VEP
 
 """
 ##### Function definitions #######################################################################
@@ -406,6 +396,9 @@ def filtervariant(listanno, name = ""):
     overfivepc = []
     candidate = []
     now = datetime.datetime.now()
+
+    if name = "":
+        name = now.strftime('%y%m%d-%H%M%S')
 
     for data in listanno:
         nodataflag = False
