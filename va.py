@@ -1,15 +1,5 @@
 """
-va.py v13 - wrapper for myvariant.info and Ensembl's VEP
-
-Version date: August 27th, 2019
-
-If running standalone, the following modules need to be imported:
-json
-sys
-requests
-myvariant
-va
-time
+va.py - wrapper for myvariant.info and Ensembl's VEP
 
 """
 ##### Function definitions #######################################################################
@@ -20,7 +10,7 @@ import sys
 import myvariant
 import datetime
 
-def outputHGVS(listHGVS):
+def outputHGVS(listHGVS, name = ""):
     """
 
     outputHGVS - outputs a file with the name 'HGVS_*name.txt' containing the list of HGVS ids
@@ -32,7 +22,8 @@ def outputHGVS(listHGVS):
     index = 0
 
     #Accept name input from user
-    name = input('Please enter an identifier for your file: ')
+    if name != "":
+        name = input('Please enter an identifier for your file: ')
     outputFile = open('HGVS_' + name + '.txt', 'w')
 
     #Write to file
@@ -75,12 +66,11 @@ def filteraffected(listAffected, listControl):
 
         if i%1000 == 0:
             print(str(i) + '/' + str(len(listAffected[0])) + ' completed...')
-        
+
         i = i + 1
 
     print('Filtering completed.')
     return listCandidate
-
 
 def importHGVS(listAffected, listControl):
     """
@@ -101,7 +91,7 @@ def importHGVS(listAffected, listControl):
             print ('File not found.\n')
 
     cat = input('Enter "a" for HGVS IDs from affected, "c" from controls: ')
-    
+
     while cat != 'a' and cat != 'c':
         cat = input('Please enter "a" for affected, and "c" for control: ')
 
@@ -128,14 +118,14 @@ def importfHGVS():
 
     inputfileopen = False
 
-    while inputfileopen == False: 
+    while inputfileopen == False:
         try:
             fileName = input('Please enter the filename of the file listing candidate HGVS IDs: ')
             inputfile = open(fileName, 'r')
             inputfileopen = True
         except IOError:
             print('File not found.\n')
-            
+
     listCandidate = []
 
     for line in inputfile:
@@ -158,13 +148,13 @@ def statCV(data):
     Return: the ClinVar status
     """
     pFlag = 'Benign'
-    
+
     #Check if 'clinvar' exists
     if 'clinvar' in data:
         #Check if 'rcv' exists
         if 'rcv' in data['clinvar']:
             #Number of RCV entries affects parsing of the json data
-            if len(data['clinvar']['rcv']) > 1: 
+            if len(data['clinvar']['rcv']) > 1:
                 for y in data['clinvar']['rcv']:
                     if y['clinical_significance'] == 'Pathogenic' or y['clinical_significance'] == 'Likely pathogenic' or y['clinical_significance'] == 'Pathogenic/Likely pathogenic':
                         pFlag = 'Pathogenic'
@@ -188,14 +178,14 @@ def dumpCV(data):
     #0 - pathogenic, 1 - uncertain significance, 2 - benign
     numReport = [0, 0, 0]
     chkFlag = False
-    
+
     #Check if 'clinvar' exists
     if 'clinvar' in data:
         #Check if 'rcv' exists
         if 'rcv' in data['clinvar']:
             l = len(data['clinvar']['rcv'])
             #Number of RCV entries affects parsing of the json data
-            if l > 1: 
+            if l > 1:
                 for y in data['clinvar']['rcv']:
                     if (y['clinical_significance'] == 'Pathogenic'
                         or y['clinical_significance'] == 'Likely pathogenic'
@@ -239,7 +229,7 @@ def dumpRSID(data):
     """
     dumpRSID - pull the dbSNP RSID from the JSON data structure
     Parameters: data - dictionary/list of the JSON data on the variant
-    Return: the RSID 
+    Return: the RSID
     """
     if 'dbsnp' in data:
         return data['dbsnp']['rsid']
@@ -317,12 +307,12 @@ def annotvep(lc):
     """
     #Processing time tracker
     start = time.time()
-    
+
     #indexes for list traversal
     i = 0
     u = 200
-    
-    #VEP REST API 
+
+    #VEP REST API
     server = "http://grch37.rest.ensembl.org"
     ext = "/vep/human/hgvs"
     headers={ "Content-Type" : "application/json", "Accept" : "application/json"}
@@ -333,7 +323,7 @@ def annotvep(lc):
     #Annotation process
     print('Initiating annotation...')
     while i < len(lc):
-        
+
         #Retrieve 200 HGVS IDs - maximum for the batch query to the VEP REST API
         data = lc[i:u]
         pdata = str(data).replace("'", '"')
@@ -357,14 +347,14 @@ def annotvep(lc):
 
         i = i + 200
         u = i + 200
-        
+
         if u > len(lc):
             u = len(lc)
 
     #Processing time tracker
     end = time.time()
     print('Processing time: ' + str(end - start))
-            
+
     return annotlist
 
 def annotmvi(lc):
@@ -379,7 +369,7 @@ def annotmvi(lc):
     mv = myvariant.MyVariantInfo()
 
     for HGVS in lc:
-        
+
         data = mv.getvariant(HGVS, fields = ['dbsnp.rsid',
                                                'dbsnp.alleles',
                                                'dbsnp.vartype',
@@ -390,11 +380,11 @@ def annotmvi(lc):
 
         if lc.index(HGVS)%1000 == 0:
             print (str(lc.index(HGVS)) + ' out of ' + str(len(lc)) + ' variants annotated...')
-                
+
     print('All samples annotated')
     return al
 
-def filtervariant(listanno):
+def filtervariant(listanno, name = ""):
     """
     filtervariant - filters variants based on selected criteria
     Parameters: listanno - list of the annotated variants
@@ -406,8 +396,10 @@ def filtervariant(listanno):
     overfivepc = []
     candidate = []
     now = datetime.datetime.now()
-    timelabel = now.strftime('%H%M%S-%d-%m-%y')
-    
+
+    if name = "":
+        name = now.strftime('%y%m%d-%H%M%S')
+
     for data in listanno:
         nodataflag = False
         nonrelevantflag = False
@@ -443,7 +435,7 @@ def filtervariant(listanno):
             print (str(listanno.index(data)) + ' out of ' + str(len(listanno)) + ' filtered...')
 
     #Write to nodatavariant.txt
-    outputfilendv = open('nodatavariant_' + timelabel + '.txt', 'w')
+    outputfilendv = open('nodatavariant_' + name + '.txt', 'w')
     outputfilendv.write('HGVS' + '\t'
                        + 'RSID' + '\t'
                        + 'vartype' + '\t'
@@ -462,7 +454,7 @@ def filtervariant(listanno):
     outputfilendv.close()
 
     #Write to nonrelevant.txt
-    outputfilenr = open('nonrelevantvariant_' + timelabel + '.txt', 'w')
+    outputfilenr = open('nonrelevantvariant_' + name + '.txt', 'w')
     outputfilenr.write('HGVS' + '\t'
                        + 'RSID' + '\t'
                        + 'vartype' + '\t'
@@ -481,7 +473,7 @@ def filtervariant(listanno):
     outputfilenr.close()
 
     #Write to overfivepc.txt
-    outputfileofp = open('overfivepcvariant_' + timelabel + '.txt', 'w')
+    outputfileofp = open('overfivepcvariant_' + name + '.txt', 'w')
     outputfileofp.write('HGVS' + '\t'
                        + 'RSID' + '\t'
                        + 'vartype' + '\t'
@@ -500,7 +492,7 @@ def filtervariant(listanno):
     outputfileofp.close()
 
     #Write to candidatevariants.txt
-    outputfile = open('candidatevariants_' + timelabel + '.txt', 'w')
+    outputfile = open('candidatevariants_' + name + '.txt', 'w')
     outputfile.write('HGVS' + '\t'
                        + 'RSID' + '\t'
                        + 'vartype' + '\t'
@@ -517,20 +509,20 @@ def filtervariant(listanno):
                          + str(data['ClinVar']) + '\t'
                          + data['MScon'] + '\n')
     outputfile.close()
-    
+
     end = time.time()
     print('Processing time: ' + str(end - start))
 
     #Summary report
     identifier = input('Please enter a Job ID (description): ')
-    outputsummary = open('summary_' + timelabel + '.txt', 'w')
+    outputsummary = open('summary_' + name + '.txt', 'w')
     outputsummary.write('Summary report of analysis'
                         + '\n'
                         + 'ID: '
                         + identifier
                         + '\n'
                         + 'Date performed: '
-                        + timelabel
+                        + name
                         + '\n'
                         + 'Total number of samples: '
                         + str(len(listanno))
@@ -553,7 +545,7 @@ def filtervariant(listanno):
                         )
 
     return candidate
-            
+
 def importmut():
     """
     importmut - reads file containing annotations generated by this program to repopulate the data structure
@@ -570,10 +562,10 @@ def importmut():
             inputfileopen = True
         except IOError:
             print ('File not found.')
-    
+
     #Skip header
     next(inputfile)
-    
+
     for line in inputfile:
         data = line.split('\t')
         listanno.append(dict({'_id':data[0],
@@ -599,7 +591,7 @@ def combineanno(listmvi, listvep):
     listmvi - list - contains a list of dictionaries of MVI information
     listvep - list - contains a list of dictionaries of VEP information
     Returns: a list containing both sets of information
-    
+
     """
     al = []
     lc = importfHGVS()
@@ -616,7 +608,7 @@ def combineanno(listmvi, listvep):
         while (found == False) and vi < len(listvep):
             if lc[i] == listvep[vi]['id']:
                 found = True
-                consequence = listvep[vi]['most_severe_consequence'] 
+                consequence = listvep[vi]['most_severe_consequence']
             vi = vi + 1
 
         if vi > len(listvep):
@@ -644,12 +636,12 @@ def combineanno(listmvi, listvep):
                             'ClinVar':'N/A',
                             'MScon':consequence
                             }))
-        
+
         i = i + 1
-        
+
     return al
 
-def writeanno(listanno):
+def writeanno(listanno, name = "annotated_mutations.txt"):
     """
     writeanno - export annotations to file, tab delimited.
     Parameters:
@@ -657,9 +649,9 @@ def writeanno(listanno):
     Return: none; outputs to a file named annotated_mutations.txt
     """
     print('Writing to file...')
-        
-    outputfile = open('annotated_mutations.txt', 'w')
-        
+
+    outputfile = open(name, 'w')
+
     #Output:
     #Write header
     outputfile.write('HGVS' + '\t'
@@ -685,7 +677,7 @@ def writeanno(listanno):
             print (str(listanno.index(i)) + ' out of ' + str(len(listanno)) + ' written...')
 
     print('All annotations written to file')
-    
+
     outputfile.close()
 
 def exportanno(listanno, filename):
@@ -757,25 +749,25 @@ def transcriptids(listanno):
                         and terms != '3_prime_UTR_variant'
                         and terms != 'intergenic_variant'
                         and terms != 'non_coding_transcript_variant'):
-            
+
                         append_relevant = True
-                
+
                 #Final check if the protein is coding
                 if (transcript['biotype']) != 'protein_coding':
                     append_relevant = False
-                    
+
                 #Verify information is present
                 protein_start = 'None'
                 protein_end = 'None'
                 amino_acids = 'None'
-                
+
                 if 'protein_start' in transcript:
                     protein_start = transcript['protein_start']
                 if 'protein_end' in transcript:
                     protein_end = transcript['protein_end']
                 if 'amino_acids' in transcript:
                     amino_acids = transcript['amino_acids']
-                    
+
                 #Relevant
                 if append_relevant == True:
                     list_relevant_transcript.append(dict({'transcript_id':transcript['transcript_id'],
@@ -792,7 +784,7 @@ def transcriptids(listanno):
                                             'protein_end':protein_end,
                                             'amino_acids':amino_acids
                                             }))
-                    
+
         else:
             list_relevant_transcript.append('None')
             list_transcript.append('None')
@@ -806,7 +798,3 @@ def transcriptids(listanno):
 
     exportanno(listall, 'variants_all_transcripts.txt')
     exportanno(listrelevant, 'variants_relevant_transcript.txt')
-
-    
-      
-    

@@ -1,7 +1,5 @@
 """
-VariantAnnotation.py v13 - handles variant annotation tasks
-
-Version Date: August 27th, 2019
+VariantAnnotation.py - handles variant annotation tasks
 
 Author: Michael Ke
 
@@ -12,7 +10,39 @@ import requests
 import myvariant
 import time
 import va
+import datetime
 
+def fullroutine():
+    #Get unique job ID name
+    now = datetime.datetime.now()
+    timelabel = now.strftime('%y%m%d-%H%M%S')
+
+    #Import candidate variants
+    lCandidate = va.importfHGVS()
+
+    #MVI Annotation
+    startmvi = time.time()
+    lmvi = va.annotmvi(lCandidate)
+    endmvi = time.time()
+    print('Total MVI annotation run time: ' + str(endmvi - startmvi) + '\n')
+    #Export MVI
+    mvifname = 'mvi_annotation_' + timelabel + '.txt'
+    va.exportanno(lmvi, mvifname)
+    #VEP annotation
+    startvep = time.time()
+    lvep = va.annotvep(lCandidate)
+    endvep = time.time()
+    print ('Total VEP annotation run time: '+  str(endvep - startvep) + '\n')
+    #Export VEP
+    vepfname = 'vep_annotation_' + timelabel + '.txt'
+    va.exportanno(lvep, vepfname)
+    #Export combined annotations
+    lanno = va.combineanno(lmvi, lvep)
+    annofname = 'annotated_mutations_' + timelabel + '.txt'
+    va.writeanno(lanno, annofname)
+    #Filtervariant
+    va.filtervariant(lanno, timelabel)
+    print('Complete')
 ##### Program Start ##################################################################
 #GLOBAL VARIABLES
 EXIT_PROGRAM = False
@@ -31,8 +61,9 @@ while EXIT_PROGRAM == False:
     print('3) Import data')
     print('4) Export data')
     print('5) Process data')
-    print('6) Exit (modules still loaded)')
-    
+    print('6) Full Routine')
+    print('7) Exit (modules still loaded)')
+
     option = int(input('Select option: '))
 
     while (option != 1
@@ -41,6 +72,7 @@ while EXIT_PROGRAM == False:
            and option != 4
            and option != 5
            and option != 6
+           and option != 7
            ):
         option = int(input('Invalid selection; please select one of the options: '))
 
@@ -59,10 +91,10 @@ while EXIT_PROGRAM == False:
             i = i + 1
 
         lCandidate = va.filteraffected(lAffected, lControl)
-        va.outputHGVS(lCandidate)
+        va.outputHGVS(lCandidate, "candidate")
         end = time.time()
         print('Total run time: ' + str(end - start) + '\n')
-        
+
     elif option == 2:
         exitannotation = False
         while exitannotation == False:
@@ -76,8 +108,8 @@ while EXIT_PROGRAM == False:
                    and optionannotation != 2
                    and optionannotation != 3):
                 optionannotation = int(input('Invalid selection; please select one of the options: '))
-                
-            if optionannotation == 1: 
+
+            if optionannotation == 1:
 
                 listHGVS = va.importfHGVS()
 
@@ -161,10 +193,13 @@ while EXIT_PROGRAM == False:
         LIST_PROCESSED = va.retrievevep(listfiltered, LIST_VEP)
         va.exportanno(LIST_PROCESSED, 'vepanno_candidates.txt')
         va.transcriptids(LIST_PROCESSED)
-        
+
     elif option == 6:
+        fullroutine();
+
+    elif option == 7:
         check = input('Are you sure you want to exit? (y/n)')
-        if check == 'y': 
+        if check == 'y':
             EXIT_PROGRAM = True
         else:
             print('Returning to menu' + '\n')
