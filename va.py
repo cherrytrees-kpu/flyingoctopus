@@ -397,7 +397,7 @@ def filtervariant(listanno, name = ""):
     candidate = []
     now = datetime.datetime.now()
 
-    if name = "":
+    if name == "":
         name = now.strftime('%y%m%d-%H%M%S')
 
     for data in listanno:
