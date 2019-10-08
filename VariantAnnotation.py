@@ -95,7 +95,18 @@ while EXIT_PROGRAM == False:
             i = i + 1
 
         lCandidate = va.filteraffected(lAffected, lControl)
+        lglvariant = []
+
+        j = 0
+        while j < len(lCandidate):
+            if 'chrGL' in lCandidate[j]:
+                lglvariant.append(lCandidate[j])
+                del lCandidate[j]
+                j = j - 1
+            j = j + 1
+
         va.outputHGVS(lCandidate, "candidate")
+        va.outputHGVS(lglvariant, "GLvariant")
         end = time.time()
         print('Total run time: ' + str(end - start) + '\n')
 
