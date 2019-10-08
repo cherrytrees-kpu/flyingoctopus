@@ -56,13 +56,14 @@ LIST_MVI = []
 LIST_PROCESSED = []
 
 while EXIT_PROGRAM == False:
-    print('1) Generate filtered HGVS file')
-    print('2) Annotation')
-    print('3) Import data')
-    print('4) Export data')
-    print('5) Process data')
-    print('6) Full Routine')
-    print('7) Exit (modules still loaded)')
+    print('1) Import HGVS from .vcf files')
+    print('2) Generate filtered HGVS file')
+    print('3) Annotation')
+    print('4) Import data')
+    print('5) Export data')
+    print('6) Process data')
+    print('7) Full Routine')
+    print('8) Exit (modules still loaded)')
 
     option = int(input('Select option: '))
 
@@ -73,12 +74,15 @@ while EXIT_PROGRAM == False:
            and option != 5
            and option != 6
            and option != 7
+           and option != 8
            ):
         option = int(input('Invalid selection; please select one of the options: '))
 
     print('')
-
     if option == 1:
+        va.vcftoHGVS()
+
+    if option == 2:
         start = time.time()
         lAffected = []
         lControl = []
@@ -95,7 +99,7 @@ while EXIT_PROGRAM == False:
         end = time.time()
         print('Total run time: ' + str(end - start) + '\n')
 
-    elif option == 2:
+    elif option == 3:
         exitannotation = False
         while exitannotation == False:
             print ('1) myvariant.info annotation')
@@ -130,7 +134,7 @@ while EXIT_PROGRAM == False:
                 exitannotation = True
                 print('')
 
-    elif option == 3:
+    elif option == 4:
         exitimport = False
         while exitimport == False:
             print ('1) Import myvariant.info annotation data')
@@ -159,7 +163,7 @@ while EXIT_PROGRAM == False:
                 exitimport = True
                 print('')
 
-    elif option == 4:
+    elif option == 5:
         exitexport = False
         while exitexport == False:
             print('1) Export myvariant.info annotation data')
@@ -188,16 +192,16 @@ while EXIT_PROGRAM == False:
                 exitexport = True
                 print('')
 
-    elif option == 5:
+    elif option == 6:
         listfiltered = va.filtervariant(LIST_ANNO)
         LIST_PROCESSED = va.retrievevep(listfiltered, LIST_VEP)
         va.exportanno(LIST_PROCESSED, 'vepanno_candidates.txt')
         va.transcriptids(LIST_PROCESSED)
 
-    elif option == 6:
+    elif option == 7:
         fullroutine();
 
-    elif option == 7:
+    elif option == 8:
         check = input('Are you sure you want to exit? (y/n)')
         if check == 'y':
             EXIT_PROGRAM = True
