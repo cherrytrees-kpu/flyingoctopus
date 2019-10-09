@@ -595,27 +595,10 @@ def combineanno(listmvi, listvep):
     """
     al = []
     lc = importfHGVS()
-    vi = 0
 
     for id in lc:
-        found = False
-        consequence = 'N/A'
-        pos = lc.index(id)
 
-        if pos%1000 == 0:
-            print(str(pos) + ' out of ' + str(len(lc)) + ' completed....')
-
-        while (found == False) and vi < len(listvep):
-            if id == listvep[vi]['id']:
-                found = True
-                consequence = listvep[vi]['most_severe_consequence']
-            vi = vi + 1
-
-        if vi > len(listvep):
-            if i < len(listvep):
-               vi = i
-            else:
-               vi = 19000
+        consequence = listvep[i]['most_severe_consequence']
 
         if str(type(listmvi[i])) != "<class 'NoneType'>":
             al.append(dict({'_id':listmvi[i]['_id'],
