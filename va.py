@@ -29,7 +29,8 @@ def outputHGVS(listHGVS, name = ""):
     #Write to file
     while(len(listHGVS)) > index:
         outputFile.write(listHGVS[index])
-        outputFile.write('\n')
+        if index != (len(listHGVS)-1):
+            outputFile.write('\n')
         index = index + 1
 
     outputFile.close()
@@ -325,7 +326,10 @@ def annotvep(lc):
     while i < len(lc):
 
         #Retrieve 200 HGVS IDs - maximum for the batch query to the VEP REST API
-        data = lc[i:u]
+        if u != (len(lc) - 1):
+            data = lc[i:u]
+        if u == (len(lc) - 1):
+            data = lc[i:]
         pdata = str(data).replace("'", '"')
 
         #Retrieval of data from VEP REST API
@@ -339,6 +343,14 @@ def annotvep(lc):
         #Store as list of dictionaries
         decoded = r.json()
 
+        #Check for missing annotations
+        if len(data) != len(decoded):
+            q = 0
+            for hgvs in data:
+                if hgvs != decoded[q]['id']:
+                    decoded.insert(data.index(hgvs), None)
+                q = q + 1
+
         #Add these results to annot list
         for y in decoded:
             annotlist.append(y)
@@ -346,10 +358,10 @@ def annotvep(lc):
         print (str(u) + ' out of ' + str(len(lc)) + ' completed...')
 
         i = i + 200
-        u = i + 200
+        u = u + 200
 
         if u > len(lc):
-            u = len(lc)
+            u = len(lc) - 1
 
     #Processing time tracker
     end = time.time()
@@ -599,7 +611,10 @@ def combineanno(listmvi, listvep):
 
     while i < len(lc):
 
-        consequence = listvep[i]['most_severe_consequence']
+        if str(type(listvep[i])) != "<class 'NoneType'>":
+            consequence = listvep[i]['most_severe_consequence']
+        else:
+            consequence = 'N/A'
 
         if str(type(listmvi[i])) != "<class 'NoneType'>":
             al.append(dict({'_id':listmvi[i]['_id'],
@@ -654,7 +669,9 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                          + str(i['gnomADG']) + '\t'
                          + str(i['gnomADE']) + '\t'
                          + str(i['ClinVar']) + '\t'
-                         + i['MScon'] + '\n')
+                         + i['MScon'])
+        if listanno.index(i) != (len(listanno)-1):
+            outputfile.write('\n')
 
         #Progress Indicator
         if listanno.index(i)%1000 == 0:
@@ -674,7 +691,9 @@ def exportanno(listanno, filename):
     """
     outputfile = open(filename, 'w')
     for y in listanno:
-        outputfile.write(json.dumps(y) + '\n')
+        outputfile.write(json.dumps(y))
+        if listanno.index(y) != (len(listanno)-1):
+            outputfile.write('\n')
     outputfile.close()
 
 def retrievevep(lc, listvep):
