@@ -29,7 +29,8 @@ def outputHGVS(listHGVS, name = ""):
     #Write to file
     while(len(listHGVS)) > index:
         outputFile.write(listHGVS[index])
-        outputFile.write('\n')
+        if index != (len(listHGVS)-1):
+            outputFile.write('\n')
         index = index + 1
 
     outputFile.close()
@@ -654,7 +655,9 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                          + str(i['gnomADG']) + '\t'
                          + str(i['gnomADE']) + '\t'
                          + str(i['ClinVar']) + '\t'
-                         + i['MScon'] + '\n')
+                         + i['MScon'])
+        if listanno.index(i) != (len(listanno)-1):
+            outputfile.write('\n')
 
         #Progress Indicator
         if listanno.index(i)%1000 == 0:
@@ -674,7 +677,9 @@ def exportanno(listanno, filename):
     """
     outputfile = open(filename, 'w')
     for y in listanno:
-        outputfile.write(json.dumps(y) + '\n')
+        outputfile.write(json.dumps(y))
+        if listanno.index(y) != (len(listanno)-1):
+            outputfile.write('\n')
     outputfile.close()
 
 def retrievevep(lc, listvep):
