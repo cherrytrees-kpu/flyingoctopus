@@ -596,7 +596,7 @@ def combineanno(listmvi, listvep):
     al = []
     lc = importfHGVS()
 
-    for id in lc:
+    while i < len(lc):
 
         consequence = listvep[i]['most_severe_consequence']
 
