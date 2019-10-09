@@ -339,17 +339,6 @@ def annotvep(lc):
         #Store as list of dictionaries
         decoded = r.json()
 
-        #Check for missing data
-        if len(decoded) < 200:
-            for id in data:
-                found = False
-                for annot in decoded:
-                    if id == annot['id']:
-                        found = True
-                if found == False:
-                    pos = data.index(id)
-                    decoded.insert(pos - 1, 'NULL')
-
         #Add these results to annot list
         for y in decoded:
             annotlist.append(y)
