@@ -326,7 +326,10 @@ def annotvep(lc):
     while i < len(lc):
 
         #Retrieve 200 HGVS IDs - maximum for the batch query to the VEP REST API
-        data = lc[i:u]
+        if u != (len(lc) - 1):
+            data = lc[i:u]
+        if u == (len(lc) - 1):
+            data = lc[i:]
         pdata = str(data).replace("'", '"')
 
         #Retrieval of data from VEP REST API
@@ -342,11 +345,11 @@ def annotvep(lc):
 
         #Check for missing annotations
         if len(data) != len(decoded):
-            i = 0
+            q = 0
             for hgvs in data:
-                if hgvs != decoded[i]['id']:
+                if hgvs != decoded[q]['id']:
                     decoded.insert(data.index(hgvs)-1, None)
-                i = i + 1
+                q = q + 1
 
         #Add these results to annot list
         for y in decoded:
@@ -355,7 +358,7 @@ def annotvep(lc):
         print (str(u) + ' out of ' + str(len(lc)) + ' completed...')
 
         i = i + 200
-        u = i + 200
+        u = u + 200
 
         if u > len(lc):
             u = len(lc) - 1
