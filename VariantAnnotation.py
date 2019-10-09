@@ -205,9 +205,9 @@ while EXIT_PROGRAM == False:
 
     elif option == 6:
         listfiltered = va.filtervariant(LIST_ANNO)
-        LIST_PROCESSED = va.retrievevep(listfiltered, LIST_VEP)
-        va.exportanno(LIST_PROCESSED, 'vepanno_candidates.txt')
-        va.transcriptids(LIST_PROCESSED)
+        #LIST_PROCESSED = va.retrievevep(listfiltered, LIST_VEP)
+        #va.exportanno(LIST_PROCESSED, 'vepanno_candidates.txt')
+        #va.transcriptids(LIST_PROCESSED)
 
     elif option == 7:
         fullroutine();
