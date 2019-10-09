@@ -340,6 +340,14 @@ def annotvep(lc):
         #Store as list of dictionaries
         decoded = r.json()
 
+        #Check for missing annotations
+        if len(data) != len(decoded):
+            i = 0
+            for hgvs in data:
+                if hgvs != decoded[i]:
+                    decoded.insert(data.index(HGVS)-1, None)
+                i = i + 1
+
         #Add these results to annot list
         for y in decoded:
             annotlist.append(y)
@@ -350,7 +358,7 @@ def annotvep(lc):
         u = i + 200
 
         if u > len(lc):
-            u = len(lc)
+            u = len(lc) - 1
 
     #Processing time tracker
     end = time.time()
