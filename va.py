@@ -344,7 +344,7 @@ def annotvep(lc):
         if len(data) != len(decoded):
             i = 0
             for hgvs in data:
-                if hgvs != decoded[i]:
+                if hgvs != decoded[i]['id']:
                     decoded.insert(data.index(HGVS)-1, None)
                 i = i + 1
 
