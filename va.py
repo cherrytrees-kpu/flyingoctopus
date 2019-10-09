@@ -611,7 +611,10 @@ def combineanno(listmvi, listvep):
 
     while i < len(lc):
 
-        consequence = listvep[i]['most_severe_consequence']
+        if str(type(listvep[i])) != "<class 'NoneType'>":
+            consequence = listvep[i]['most_severe_consequence']
+        else:
+            consequence = 'N/A'
 
         if str(type(listmvi[i])) != "<class 'NoneType'>":
             al.append(dict({'_id':listmvi[i]['_id'],
