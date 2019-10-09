@@ -595,6 +595,7 @@ def combineanno(listmvi, listvep):
     """
     al = []
     lc = importfHGVS()
+    i = 0
 
     while i < len(lc):
 
