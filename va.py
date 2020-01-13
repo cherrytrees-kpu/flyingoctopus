@@ -345,11 +345,14 @@ def annotvep(lc):
 
         #Check for missing annotations
         if len(data) != len(decoded):
-            q = 0
-            for hgvs in data:
-                if hgvs != decoded[q]['id']:
-                    decoded.insert(data.index(hgvs), None)
-                q = q + 1
+            try:
+                q = 0
+                for hgvs in data:
+                    if hgvs != decoded[q]['id']:
+                        decoded.insert(data.index(hgvs), None)
+                    q = q + 1
+            except:
+                print('Issue between ' + str(data[0]) + 'and ' + str(data[len(data)-1]))
 
         #Add these results to annot list
         for y in decoded:
