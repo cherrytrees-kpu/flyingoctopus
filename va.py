@@ -353,6 +353,7 @@ def annotvep(lc):
                     q = q + 1
             except:
                 print('Issue between ' + str(data[0]) + 'and ' + str(data[len(data)-1]))
+                print(len(decoded))
 
         #Add these results to annot list
         for y in decoded:
