@@ -345,12 +345,17 @@ def annotvep(lc):
 
         #Check for missing annotations
         if len(data) != len(decoded):
+            print(str(len(data) - len(decoded)) + ' annotations are missing')
             try:
                 q = 0
                 for hgvs in data:
-                    if hgvs != decoded[q]['id']:
-                        decoded.insert(data.index(hgvs), None)
-                    q = q + 1
+                    if data.index(hgvs) < len(decoded):
+                        if hgvs != decoded[q]['id']:
+                            decoded.insert(data.index(hgvs), None)
+                        q = q + 1
+
+                    if data.index(hgvs) >= len(decoded):
+                        decoded.append(None)
             except:
                 print('Issue between ' + str(data[0]) + 'and ' + str(data[len(data)-1]))
                 print(len(decoded))
