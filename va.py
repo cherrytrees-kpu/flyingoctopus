@@ -438,10 +438,10 @@ def filtervariant(listanno, name = ""):
               or data['MScon'] == 'intergenic_variant'):
             nonrelevantflag = True
         elif data['gnomADG'] != 'N/A':
-            if float(data['gnomADG']) >= 0.05:
+            if float(data['gnomADG']) >= 0.001:
                 overfivepcflag = True
         elif data['gnomADE'] != 'N/A':
-            if float(data['gnomADE']) >= 0.05:
+            if float(data['gnomADE']) >= 0.001:
                 overfivepcflag = True
 
         if nodataflag == True:
@@ -554,7 +554,7 @@ def filtervariant(listanno, name = ""):
                         + '# Non-relevant: '
                         + str(len(nonrelevant))
                         + '\n'
-                        + '# Greater than 5% AF: '
+                        + '# Greater than 0.1% AF: '
                         + str(len(overfivepc))
                         + '\n'
                         + '# Candidates: '
