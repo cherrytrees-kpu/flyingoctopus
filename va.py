@@ -303,6 +303,7 @@ def dumpensemblgeneid(data):
         #Check if the gene_id is in the current list
         if not(data['transcript_consequences'][i]['gene_id'] in geneids):
             geneids.append(data['transcript_consequences'][i]['gene_id'])
+        i = i + 1
 
     return geneids
 
