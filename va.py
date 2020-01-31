@@ -464,7 +464,7 @@ def annothpa(data):
     #For every gene in the gene list
     while i < len(data['genelist']):
 
-        r = requests.get(server + data['genelist'][i]['gene_id'])
+        r = requests.get(server + data['genelist'][i]['gene_id'] + '.json')
 
         #Check if there was data returned
         if r.status_code == requests.codes.ok:
