@@ -449,6 +449,29 @@ def annotmvi(lc):
     print('All samples annotated')
     return al
 
+def annothpa(data):
+    """
+    annothpa - pulls expression data from the Human Protein Atlas
+    Parameters: data - program-generated annotations for a single variant
+    Returns: returns expression data
+    """
+    #expression - list that holds the return data from
+    expression = []
+    i = 0
+
+    server = "http://www.proteinatlas.org/"
+
+    #For every gene in the gene list
+    while i < len(data['genelist']):
+
+        r = requests.get(server + data['genelist'][i]['gene_id'])
+
+        #Check if there was data returned
+        if r.status_code == requests.codes.ok:
+            expression.append(r.json())
+
+    return expression
+
 def filtervariant(listanno, name = ""):
     """
     filtervariant - filters variants based on selected criteria
@@ -647,7 +670,7 @@ def importmut():
                            'gnomADE':data[4],
                            'ClinVar':data[5],
                            'MScon':data[6],
-                           'gene_id':data[7].strip('\n')
+                           'genelist':data[7].strip('\n')
                            }))
 
     inputfile.close()
@@ -681,7 +704,7 @@ def combineanno(listmvi, listvep):
                             'gnomADE':dumpgnomADE(listmvi[i]),
                             'ClinVar':dumpCV(listmvi[i]),
                             'MScon':dumpconsequence(listvep[i]),
-                            'gene_id':dumpensemblgeneid(listvep[i])
+                            'genelist':dumpensemblgeneid(listvep[i])
                             }))
 
         if str(type(listmvi[i])) == "<class 'NoneType'>":
@@ -692,7 +715,7 @@ def combineanno(listmvi, listvep):
                             'gnomADE':'N/A',
                             'ClinVar':'N/A',
                             'MScon':dumpconsequence(listvep[i]),
-                            'gene_id':dumpensemblgeneid(listvep[i])
+                            'genelist':dumpensemblgeneid(listvep[i])
                             }))
 
         i = i + 1
@@ -719,7 +742,7 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                      + 'gnomADE' + '\t'
                      + 'ClinVar' + '\t'
                      + 'MSCon' + '\t'
-                     + 'GeneIDs' + '\n')
+                     + 'GeneList' + '\n')
 
     #Write data
     for i in listanno:
@@ -730,7 +753,7 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                          + str(i['gnomADE']) + '\t'
                          + str(i['ClinVar']) + '\t'
                          + i['MScon'] + '\t'
-                         + str(i['gene_id']))
+                         + str(i['genelist']))
         if listanno.index(i) != (len(listanno)-1):
             outputfile.write('\n')
 
