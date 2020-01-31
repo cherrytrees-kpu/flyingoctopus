@@ -274,6 +274,38 @@ def dumpgnomADE(data):
     else:
         return 'N/A'
 
+def dumpconsequence(data):
+    """
+    dumpconsequence - pull the most severe consequence from the JSON data structure
+    Parameters: data - dictionary/list of the JSON data on the variant
+    Return: most severe consequence
+    """
+
+    consequence = ""
+
+    if str(type(data)) != "<class 'NoneType'>":
+        consequence = data['most_severe_consequence']
+    else:
+        consequence = 'N/A'
+    return consequence
+
+def dumpensemblgeneid(data):
+    """
+    dumpensemblgeneid - pull the gene IDs from the JSON data structure
+    Parameters: data - dictionary/list of the JSON data on the variant
+    Return: list of gene IDs that the variant affects
+    """
+
+    geneids = []
+    i = 0
+
+    while i < len(data['transcript_consequences'])
+        #Check if the gene_id is in the current list
+        if not(data['transcript_consequences'][i]['gene_id'] in geneids):
+            geneids.append(data['transcript_consequences'][i]['gene_id'])
+
+    return geneids
+
 def importanno():
     """
     importanno - from a file containing json.dumps annotation data, import it as a list of dictionaries
@@ -595,7 +627,8 @@ def importmut():
                            'gnomADG':data[3],
                            'gnomADE':data[4],
                            'ClinVar':data[5],
-                           'MScon':data[6].strip('\n')
+                           'MScon':data[6],
+                           'gene_id':data[7].strip('\n')
                            }))
 
     inputfile.close()
@@ -620,11 +653,6 @@ def combineanno(listmvi, listvep):
 
     while i < len(lc):
 
-        if str(type(listvep[i])) != "<class 'NoneType'>":
-            consequence = listvep[i]['most_severe_consequence']
-        else:
-            consequence = 'N/A'
-
         if str(type(listmvi[i])) != "<class 'NoneType'>":
             al.append(dict({'_id':listmvi[i]['_id'],
                             'rsid':dumpRSID(listmvi[i]),
@@ -632,7 +660,8 @@ def combineanno(listmvi, listvep):
                             'gnomADG':dumpgnomADG(listmvi[i]),
                             'gnomADE':dumpgnomADE(listmvi[i]),
                             'ClinVar':dumpCV(listmvi[i]),
-                            'MScon':consequence
+                            'MScon':dumpconsequence(listvep[i]),
+                            'gene_id':dumpensemblgeneid(listvep[i])
                             }))
 
         if str(type(listmvi[i])) == "<class 'NoneType'>":
@@ -642,7 +671,8 @@ def combineanno(listmvi, listvep):
                             'gnomADG':'N/A',
                             'gnomADE':'N/A',
                             'ClinVar':'N/A',
-                            'MScon':consequence
+                            'MScon':dumpconsequence(listvep[i]),
+                            'gene_id':dumpensemblgeneid(listvep[i])
                             }))
 
         i = i + 1
@@ -668,7 +698,8 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                      + 'gnomADG' + '\t'
                      + 'gnomADE' + '\t'
                      + 'ClinVar' + '\t'
-                     + 'MSCon' + '\n')
+                     + 'MSCon' + '\t'
+                     + 'gene_id' + '\n')
 
     #Write data
     for i in listanno:
@@ -678,7 +709,8 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                          + str(i['gnomADG']) + '\t'
                          + str(i['gnomADE']) + '\t'
                          + str(i['ClinVar']) + '\t'
-                         + i['MScon'])
+                         + i['MScon'] + '\t'
+                         + str(i['gene_id']))
         if listanno.index(i) != (len(listanno)-1):
             outputfile.write('\n')
 
