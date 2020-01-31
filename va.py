@@ -663,6 +663,16 @@ def importmut():
 
     for line in inputfile:
         data = line.split('\t')
+
+        #Check all of the data
+        #Convert the allele frequencies back to floats
+        if (data[3] != 'N/A') and (data[3] != 'None'):
+            data[3] = float(data[3])
+        if (data[4] != 'N/A') and (data[4] != 'None'):
+            data[4] = float(data[4])
+        #Convert the genelist back into a list object from str
+        data[7] = json.loads(data[7].strip('\n'))
+        #Import the line
         listanno.append(dict({'_id':data[0],
                            'rsid':data[1],
                            'vartype':data[2],
@@ -670,7 +680,7 @@ def importmut():
                            'gnomADE':data[4],
                            'ClinVar':data[5],
                            'MScon':data[6],
-                           'genelist':data[7].strip('\n')
+                           'genelist':data[7]
                            }))
 
     inputfile.close()
@@ -746,6 +756,7 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
 
     #Write data
     for i in listanno:
+
         outputfile.write(i['_id'] + '\t'
                          + i['rsid'] + '\t'
                          + i['vartype'] + '\t'
@@ -753,7 +764,9 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                          + str(i['gnomADE']) + '\t'
                          + str(i['ClinVar']) + '\t'
                          + i['MScon'] + '\t'
-                         + str(i['genelist']))
+                         + json.dumps(i['genelist'])
+                         )
+
         if listanno.index(i) != (len(listanno)-1):
             outputfile.write('\n')
 
