@@ -470,6 +470,7 @@ def annothpa(data):
         if r.status_code == requests.codes.ok:
             expression.append(r.json())
 
+        i = i + 1
     return expression
 
 def filtervariant(listanno, name = ""):
