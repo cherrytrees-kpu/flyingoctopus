@@ -653,7 +653,8 @@ def combineanno(listmvi, listvep):
     i = 0
 
     while i < len(lc):
-
+        if i%100 == 0:
+            print(str(i) + ' out of ' + str(len(lc)) + ' completed..')
         if str(type(listmvi[i])) != "<class 'NoneType'>":
             al.append(dict({'_id':listmvi[i]['_id'],
                             'rsid':dumpRSID(listmvi[i]),
