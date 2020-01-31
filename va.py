@@ -458,7 +458,7 @@ def filtervariant(listanno, name = ""):
     start = time.time()
     nodata = []
     nonrelevant = []
-    overfivepc = []
+    overfreqpc = []
     candidate = []
     now = datetime.datetime.now()
 
@@ -466,10 +466,13 @@ def filtervariant(listanno, name = ""):
         name = now.strftime('%y%m%d-%H%M%S')
 
     for data in listanno:
+        #Filter flags
         nodataflag = False
         nonrelevantflag = False
-        overfivepcflag = False
+        overfreqpcflag = False
 
+        #Filtering steps
+        #Filtering by transcript consequence
         if data['MScon'] == 'N/A':
             nodataflag = True
         elif (data['MScon'] == 'intron_variant'
@@ -481,19 +484,23 @@ def filtervariant(listanno, name = ""):
               or data['MScon'] == '3_prime_UTR_variant'
               or data['MScon'] == 'intergenic_variant'):
             nonrelevantflag = True
-        elif data['gnomADG'] != 'N/A':
-            if float(data['gnomADG']) >= 0.05:
-                overfivepcflag = True
-        elif data['gnomADE'] != 'N/A':
-            if float(data['gnomADE']) >= 0.05:
-                overfivepcflag = True
 
+        #Filtering by allele frequency
+        elif data['gnomADG'] != 'N/A':
+            if float(data['gnomADG']) >= 0.001:
+                overfreqpcflag = True
+        elif data['gnomADE'] != 'N/A':
+            if float(data['gnomADE']) >= 0.001:
+                overfreqpcflag = True
+
+        #Append data depending on which flags were triggered. If none were triggered
+        #then append to candidate list
         if nodataflag == True:
             nodata.append(data)
         elif nonrelevantflag == True:
             nonrelevant.append(data)
-        elif overfivepcflag == True:
-            overfivepc.append(data)
+        elif overfreqpcflag == True:
+            overfreqpc.append(data)
         else:
             candidate.append(data)
         if listanno.index(data)%1000 == 0:
@@ -537,8 +544,8 @@ def filtervariant(listanno, name = ""):
                          + data['MScon'] + '\n')
     outputfilenr.close()
 
-    #Write to overfivepc.txt
-    outputfileofp = open('overfivepcvariant_' + name + '.txt', 'w')
+    #Write to overfreqpc.txt
+    outputfileofp = open('overfreqpcvariant_' + name + '.txt', 'w')
     outputfileofp.write('HGVS' + '\t'
                        + 'RSID' + '\t'
                        + 'vartype' + '\t'
@@ -546,7 +553,7 @@ def filtervariant(listanno, name = ""):
                        + 'gnomADE' + '\t'
                        + 'ClinVar' + '\t'
                        + 'MScon' + '\n')
-    for data in overfivepc:
+    for data in overfreqpc:
         outputfileofp.write(data['_id'] + '\t'
                          + data['rsid'] + '\t'
                          + data['vartype'] + '\t'
@@ -598,8 +605,8 @@ def filtervariant(listanno, name = ""):
                         + '# Non-relevant: '
                         + str(len(nonrelevant))
                         + '\n'
-                        + '# Greater than 5% AF: '
-                        + str(len(overfivepc))
+                        + '# Greater than 0.1% AF: '
+                        + str(len(overfreqpc))
                         + '\n'
                         + '# Candidates: '
                         + str(len(candidate))
@@ -712,7 +719,7 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                      + 'gnomADE' + '\t'
                      + 'ClinVar' + '\t'
                      + 'MSCon' + '\t'
-                     + 'gene_id' + '\n')
+                     + 'GeneIDs' + '\n')
 
     #Write data
     for i in listanno:
@@ -857,6 +864,11 @@ def transcriptids(listanno):
     exportanno(listrelevant, 'variants_relevant_transcript.txt')
 
 def vcftoHGVS():
+    """
+    vcftoHGVS - calls the myvariant.info get_hgvs_from_vcf function
+    Parameters: None
+    Returns: none; outputs a file containing all of the HGVS IDs
+    """
     HGVS = []
     filename = input('Please enter filename : ')
     HGVS = list(myvariant.get_hgvs_from_vcf(filename))
