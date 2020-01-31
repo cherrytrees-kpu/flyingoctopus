@@ -299,11 +299,14 @@ def dumpensemblgeneid(data):
     geneids = []
     i = 0
 
-    while i < len(data['transcript_consequences']):
-        #Check if the gene_id is in the current list
-        if not(data['transcript_consequences'][i]['gene_id'] in geneids):
-            geneids.append(data['transcript_consequences'][i]['gene_id'])
-        i = i + 1
+    if ['transcript_consequences'] in data:
+        while i < len(data['transcript_consequences']):
+            #Check if the gene_id is in the current list
+            if not(data['transcript_consequences'][i]['gene_id'] in geneids):
+                geneids.append(data['transcript_consequences'][i]['gene_id'])
+            i = i + 1
+    else:
+        geneids.append('N/A')
 
     return geneids
 
