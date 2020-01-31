@@ -274,6 +274,50 @@ def dumpgnomADE(data):
     else:
         return 'N/A'
 
+def dumpconsequence(data):
+    """
+    dumpconsequence - pull the most severe consequence from the JSON data structure
+    Parameters: data - dictionary/list of the JSON data on the variant
+    Return: most severe consequence
+    """
+
+    consequence = ""
+
+    if str(type(data)) != "<class 'NoneType'>":
+        consequence = data['most_severe_consequence']
+    else:
+        consequence = 'N/A'
+    return consequence
+
+def dumpensemblgeneid(data):
+    """
+    dumpensemblgeneid - pull the gene IDs from the JSON data structure
+    Parameters: data - dictionary/list of the JSON data on the variant
+    Return: list of gene IDs that the variant affects
+    """
+
+    geneids = []
+    i = 0
+
+    if str(type(data)) != "<class 'NoneType'>":
+        if 'transcript_consequences' in data:
+            while i < len(data['transcript_consequences']):
+                #Check if the gene_id is in the current list
+                names = {'gene_id': data['transcript_consequences'][i]['gene_id'],
+                        'gene_symbol': data['transcript_consequences'][i]['gene_symbol']
+                        }
+                if not(names in geneids):
+                    #geneids.append(data['transcript_consequences'][i]['gene_id'])
+                    geneids.append(names)
+
+                i = i + 1
+        else:
+            geneids.append('N/A')
+    else:
+        geneids.append('N/A')
+
+    return geneids
+
 def importanno():
     """
     importanno - from a file containing json.dumps annotation data, import it as a list of dictionaries
@@ -405,6 +449,30 @@ def annotmvi(lc):
     print('All samples annotated')
     return al
 
+def annothpa(data):
+    """
+    annothpa - pulls expression data from the Human Protein Atlas
+    Parameters: data - program-generated annotations for a single variant
+    Returns: returns expression data
+    """
+    #expression - list that holds the return data from
+    expression = []
+    i = 0
+
+    server = "http://www.proteinatlas.org/"
+
+    #For every gene in the gene list
+    while i < len(data['genelist']):
+
+        r = requests.get(server + data['genelist'][i]['gene_id'] + '.json')
+
+        #Check if there was data returned
+        if r.status_code == requests.codes.ok:
+            expression.append(r.json())
+
+        i = i + 1
+    return expression
+
 def filtervariant(listanno, name = ""):
     """
     filtervariant - filters variants based on selected criteria
@@ -414,7 +482,7 @@ def filtervariant(listanno, name = ""):
     start = time.time()
     nodata = []
     nonrelevant = []
-    overfivepc = []
+    overfreqpc = []
     candidate = []
     now = datetime.datetime.now()
 
@@ -422,10 +490,13 @@ def filtervariant(listanno, name = ""):
         name = now.strftime('%y%m%d-%H%M%S')
 
     for data in listanno:
+        #Filter flags
         nodataflag = False
         nonrelevantflag = False
-        overfivepcflag = False
+        overfreqpcflag = False
 
+        #Filtering steps
+        #Filtering by transcript consequence
         if data['MScon'] == 'N/A':
             nodataflag = True
         elif (data['MScon'] == 'intron_variant'
@@ -437,19 +508,23 @@ def filtervariant(listanno, name = ""):
               or data['MScon'] == '3_prime_UTR_variant'
               or data['MScon'] == 'intergenic_variant'):
             nonrelevantflag = True
+
+        #Filtering by allele frequency
         elif data['gnomADG'] != 'N/A':
             if float(data['gnomADG']) >= 0.001:
-                overfivepcflag = True
+                overfreqpcflag = True
         elif data['gnomADE'] != 'N/A':
             if float(data['gnomADE']) >= 0.001:
-                overfivepcflag = True
+                overfreqpcflag = True
 
+        #Append data depending on which flags were triggered. If none were triggered
+        #then append to candidate list
         if nodataflag == True:
             nodata.append(data)
         elif nonrelevantflag == True:
             nonrelevant.append(data)
-        elif overfivepcflag == True:
-            overfivepc.append(data)
+        elif overfreqpcflag == True:
+            overfreqpc.append(data)
         else:
             candidate.append(data)
         if listanno.index(data)%1000 == 0:
@@ -493,8 +568,8 @@ def filtervariant(listanno, name = ""):
                          + data['MScon'] + '\n')
     outputfilenr.close()
 
-    #Write to overfivepc.txt
-    outputfileofp = open('overfivepcvariant_' + name + '.txt', 'w')
+    #Write to overfreqpc.txt
+    outputfileofp = open('overfreqpcvariant_' + name + '.txt', 'w')
     outputfileofp.write('HGVS' + '\t'
                        + 'RSID' + '\t'
                        + 'vartype' + '\t'
@@ -502,7 +577,7 @@ def filtervariant(listanno, name = ""):
                        + 'gnomADE' + '\t'
                        + 'ClinVar' + '\t'
                        + 'MScon' + '\n')
-    for data in overfivepc:
+    for data in overfreqpc:
         outputfileofp.write(data['_id'] + '\t'
                          + data['rsid'] + '\t'
                          + data['vartype'] + '\t'
@@ -555,7 +630,7 @@ def filtervariant(listanno, name = ""):
                         + str(len(nonrelevant))
                         + '\n'
                         + '# Greater than 0.1% AF: '
-                        + str(len(overfivepc))
+                        + str(len(overfreqpc))
                         + '\n'
                         + '# Candidates: '
                         + str(len(candidate))
@@ -589,13 +664,24 @@ def importmut():
 
     for line in inputfile:
         data = line.split('\t')
+
+        #Check all of the data
+        #Convert the allele frequencies back to floats
+        if (data[3] != 'N/A') and (data[3] != 'None'):
+            data[3] = float(data[3])
+        if (data[4] != 'N/A') and (data[4] != 'None'):
+            data[4] = float(data[4])
+        #Convert the genelist back into a list object from str
+        data[7] = json.loads(data[7].strip('\n'))
+        #Import the line
         listanno.append(dict({'_id':data[0],
                            'rsid':data[1],
                            'vartype':data[2],
                            'gnomADG':data[3],
                            'gnomADE':data[4],
                            'ClinVar':data[5],
-                           'MScon':data[6].strip('\n')
+                           'MScon':data[6],
+                           'genelist':data[7]
                            }))
 
     inputfile.close()
@@ -619,12 +705,8 @@ def combineanno(listmvi, listvep):
     i = 0
 
     while i < len(lc):
-
-        if str(type(listvep[i])) != "<class 'NoneType'>":
-            consequence = listvep[i]['most_severe_consequence']
-        else:
-            consequence = 'N/A'
-
+        if i%100 == 0:
+            print(str(i) + ' out of ' + str(len(lc)) + ' completed..')
         if str(type(listmvi[i])) != "<class 'NoneType'>":
             al.append(dict({'_id':listmvi[i]['_id'],
                             'rsid':dumpRSID(listmvi[i]),
@@ -632,7 +714,8 @@ def combineanno(listmvi, listvep):
                             'gnomADG':dumpgnomADG(listmvi[i]),
                             'gnomADE':dumpgnomADE(listmvi[i]),
                             'ClinVar':dumpCV(listmvi[i]),
-                            'MScon':consequence
+                            'MScon':dumpconsequence(listvep[i]),
+                            'genelist':dumpensemblgeneid(listvep[i])
                             }))
 
         if str(type(listmvi[i])) == "<class 'NoneType'>":
@@ -642,7 +725,8 @@ def combineanno(listmvi, listvep):
                             'gnomADG':'N/A',
                             'gnomADE':'N/A',
                             'ClinVar':'N/A',
-                            'MScon':consequence
+                            'MScon':dumpconsequence(listvep[i]),
+                            'genelist':dumpensemblgeneid(listvep[i])
                             }))
 
         i = i + 1
@@ -668,17 +752,22 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                      + 'gnomADG' + '\t'
                      + 'gnomADE' + '\t'
                      + 'ClinVar' + '\t'
-                     + 'MSCon' + '\n')
+                     + 'MSCon' + '\t'
+                     + 'GeneList' + '\n')
 
     #Write data
     for i in listanno:
+
         outputfile.write(i['_id'] + '\t'
                          + i['rsid'] + '\t'
                          + i['vartype'] + '\t'
                          + str(i['gnomADG']) + '\t'
                          + str(i['gnomADE']) + '\t'
                          + str(i['ClinVar']) + '\t'
-                         + i['MScon'])
+                         + i['MScon'] + '\t'
+                         + json.dumps(i['genelist'])
+                         )
+
         if listanno.index(i) != (len(listanno)-1):
             outputfile.write('\n')
 
@@ -812,6 +901,11 @@ def transcriptids(listanno):
     exportanno(listrelevant, 'variants_relevant_transcript.txt')
 
 def vcftoHGVS():
+    """
+    vcftoHGVS - calls the myvariant.info get_hgvs_from_vcf function
+    Parameters: None
+    Returns: none; outputs a file containing all of the HGVS IDs
+    """
     HGVS = []
     filename = input('Please enter filename : ')
     HGVS = list(myvariant.get_hgvs_from_vcf(filename))
