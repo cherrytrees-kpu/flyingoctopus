@@ -304,7 +304,11 @@ def dumpensemblgeneid(data):
             while i < len(data['transcript_consequences']):
                 #Check if the gene_id is in the current list
                 if not(data['transcript_consequences'][i]['gene_id'] in geneids):
-                    geneids.append(data['transcript_consequences'][i]['gene_id'])
+                    #geneids.append(data['transcript_consequences'][i]['gene_id'])
+                    names = {'gene_id': data['transcript_consequences'][i]['gene_id'],
+                            'gene_symbol': data['transcript_consequences'][i]['gene_symbol']
+                            }
+                    geneids.append(names)
                 i = i + 1
         else:
             geneids.append('N/A')
