@@ -495,10 +495,10 @@ def filterfreq(data):
     """
 
     overfreqpcflag = False
-    if (data['gnomADG'] != 'N/A') and (data['gnomADG'] != 'None'):
+    if (data['gnomADG'] != 'N/A') and (data['gnomADG'] != 'None') and (data['gnomADG'] != None):
         if data['gnomADG'] >= 0.001:
             overfreqpcflag = True
-    if (data['gnomADE'] != 'N/A') and (data['gnomADE'] != 'None'):
+    if (data['gnomADE'] != 'N/A') and (data['gnomADE'] != 'None' and (data['gnomADE'] != None)):
         if data['gnomADE'] >= 0.001:
             overfreqpcflag = True
 
@@ -585,7 +585,7 @@ def filtervariant(listanno, name = ""):
                                             'gene':gene['Gene'],
                                             'RNAbrd':gene['RNA brain regional distribution']
                 }))
-            if numnotdetected == len(x):
+            if numnotdetected == len(data['genelist']):
                 notbrainexpressflag = True
         if data['genelist'][0] == 'N/A':
             x = None
