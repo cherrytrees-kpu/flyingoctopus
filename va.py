@@ -462,6 +462,7 @@ def annothpa(data):
     server = "http://www.proteinatlas.org/"
 
     #For every gene in the gene list
+
     while i < len(data['genelist']):
 
         r = requests.get(server + data['genelist'][i]['gene_id'] + '.json')
@@ -471,7 +472,57 @@ def annothpa(data):
             expression.append(r.json())
 
         i = i + 1
+
     return expression
+
+def filternodata(data):
+    """
+    filternodata - checks if variant has any data
+    Parameters: data - variant and its associated annotations
+    Returns: True or False
+    """
+    nodataflag = False
+    if data['MScon'] == 'N/A':
+        nodataflag = True
+
+    return nodataflag
+
+def filterfreq(data):
+    """
+    filterfreq - checks if variant above the frequency cut off
+    Parameters: data - variant and its associated annotations
+    Returns: True or False
+    """
+
+    overfreqpcflag = False
+    if (data['gnomADG'] != 'N/A') and (data['gnomADG'] != 'None'):
+        if data['gnomADG'] >= 0.001:
+            overfreqpcflag = True
+    if (data['gnomADE'] != 'N/A') and (data['gnomADE'] != 'None'):
+        if data['gnomADE'] >= 0.001:
+            overfreqpcflag = True
+
+    return overfreqpcflag
+
+def filtercons(data):
+    """
+    filtercons - checks if the variant is relevant
+    Parameters: data - variant and its associated annotations
+    Returns: True or False
+    """
+    nonrelevantflag = False
+
+    if (data['MScon'] == 'intron_variant'
+        or data['MScon'] == 'non_coding_transcript_exon_variant'
+        or data['MScon'] == 'upstream_gene_variant'
+        or data['MScon'] == 'downstream_gene_variant'
+        or data['MScon'] == 'synonymous_variant'
+        or data['MScon'] == '5_prime_UTR_variant'
+        or data['MScon'] == '3_prime_UTR_variant'
+        or data['MScon'] == 'intergenic_variant'):
+        nonrelevantflag = True
+
+    return nonrelevantflag
 
 def filtervariant(listanno, name = ""):
     """
@@ -480,9 +531,15 @@ def filtervariant(listanno, name = ""):
     Returns: returns the filtered list of annotated variants
     """
     start = time.time()
+
     nodata = []
     nonrelevant = []
     overfreqpc = []
+    filterstep3 = []
+
+    notbrainexpress = []
+    expressiondata = []
+
     candidate = []
     now = datetime.datetime.now()
 
@@ -491,31 +548,9 @@ def filtervariant(listanno, name = ""):
 
     for data in listanno:
         #Filter flags
-        nodataflag = False
-        nonrelevantflag = False
-        overfreqpcflag = False
-
-        #Filtering steps
-        #Filtering by transcript consequence
-        if data['MScon'] == 'N/A':
-            nodataflag = True
-        elif (data['MScon'] == 'intron_variant'
-              or data['MScon'] == 'non_coding_transcript_exon_variant'
-              or data['MScon'] == 'upstream_gene_variant'
-              or data['MScon'] == 'downstream_gene_variant'
-              or data['MScon'] == 'synonymous_variant'
-              or data['MScon'] == '5_prime_UTR_variant'
-              or data['MScon'] == '3_prime_UTR_variant'
-              or data['MScon'] == 'intergenic_variant'):
-            nonrelevantflag = True
-
-        #Filtering by allele frequency
-        elif data['gnomADG'] != 'N/A':
-            if float(data['gnomADG']) >= 0.001:
-                overfreqpcflag = True
-        elif data['gnomADE'] != 'N/A':
-            if float(data['gnomADE']) >= 0.001:
-                overfreqpcflag = True
+        nodataflag = filternodata(data)
+        nonrelevantflag = filtercons(data)
+        overfreqpcflag = filterfreq(data)
 
         #Append data depending on which flags were triggered. If none were triggered
         #then append to candidate list
@@ -526,85 +561,102 @@ def filtervariant(listanno, name = ""):
         elif overfreqpcflag == True:
             overfreqpc.append(data)
         else:
-            candidate.append(data)
+            filterstep3.append(data)
         if listanno.index(data)%1000 == 0:
             print (str(listanno.index(data)) + ' out of ' + str(len(listanno)) + ' filtered...')
 
-    #Write to nodatavariant.txt
-    outputfilendv = open('nodatavariant_' + name + '.txt', 'w')
-    outputfilendv.write('HGVS' + '\t'
-                       + 'RSID' + '\t'
-                       + 'vartype' + '\t'
-                       + 'gnomADG' + '\t'
-                       + 'gnomADE' + '\t'
-                       + 'ClinVar' + '\t'
-                       + 'MScon' + '\n')
-    for data in nodata:
-        outputfilendv.write(data['_id'] + '\t'
+    #HPA annotation
+    for data in filterstep3:
+
+        print(str(filterstep3.index(data)))
+        print(data['_id'])
+
+        variantexpression = []
+        numnotdetected = 0
+        notbrainexpressflag = False
+
+        if data['genelist'][0] != 'N/A':
+            x = annothpa(data)
+            for gene in x:
+                if gene['RNA brain regional distribution'] == 'Not detected':
+                    #notbrainexpressflag = True
+                    numnotdetected = numnotdetected + 1
+                variantexpression.append(dict({
+                                            'gene':gene['Gene'],
+                                            'RNAbrd':gene['RNA brain regional distribution']
+                }))
+            if numnotdetected == len(x):
+                notbrainexpressflag = True
+        if data['genelist'][0] == 'N/A':
+            x = None
+            variantexpression.append(None)
+        expressiondata.append(x)
+
+        data['brain_expression'] = variantexpression
+
+        if notbrainexpressflag == True:
+            notbrainexpress.append(data)
+        else:
+            candidate.append(data)
+
+    exportanno(expressiondata, 'expressiondata.txt')
+
+    #Write to files
+    writeanno(nodata, 'nodata_'+ name + '.txt')
+    writeanno(nonrelevant, 'nonrelevant_' + name + '.txt')
+    writeanno(overfreqpc, 'overfreqpc_' + name + '.txt')
+
+    #Output not brainexpress:
+    outputfilenbe = open('notbrainexpress_' + name + '.txt', 'w')
+    #Write header
+    outputfilenbe.write('HGVS' + '\t'
+                     + 'RSID' + '\t'
+                     + 'VarType' + '\t'
+                     + 'gnomADG' + '\t'
+                     + 'gnomADE' + '\t'
+                     + 'ClinVar' + '\t'
+                     + 'MSCon' + '\t'
+                     + 'GeneList' + '\t'
+                     + 'BrainExpression' + '\n')
+    #Write data
+    for data in notbrainexpress:
+        outputfilenbe.write(data['_id'] + '\t'
                          + data['rsid'] + '\t'
                          + data['vartype'] + '\t'
                          + str(data['gnomADG']) + '\t'
                          + str(data['gnomADE']) + '\t'
                          + str(data['ClinVar']) + '\t'
-                         + data['MScon'] + '\n')
-    outputfilendv.close()
+                         + data['MScon'] + '\t'
+                         + json.dumps(data['genelist']) + '\t'
+                         + json.dumps(data['brain_expression']) + '\n'
+                         )
+    outputfilenbe.close()
 
-    #Write to nonrelevant.txt
-    outputfilenr = open('nonrelevantvariant_' + name + '.txt', 'w')
-    outputfilenr.write('HGVS' + '\t'
-                       + 'RSID' + '\t'
-                       + 'vartype' + '\t'
-                       + 'gnomADG' + '\t'
-                       + 'gnomADE' + '\t'
-                       + 'ClinVar' + '\t'
-                       + 'MScon' + '\n')
-    for data in nonrelevant:
-        outputfilenr.write(data['_id'] + '\t'
-                         + data['rsid'] + '\t'
-                         + data['vartype'] + '\t'
-                         + str(data['gnomADG']) + '\t'
-                         + str(data['gnomADE']) + '\t'
-                         + str(data['ClinVar']) + '\t'
-                         + data['MScon'] + '\n')
-    outputfilenr.close()
-
-    #Write to overfreqpc.txt
-    outputfileofp = open('overfreqpcvariant_' + name + '.txt', 'w')
-    outputfileofp.write('HGVS' + '\t'
-                       + 'RSID' + '\t'
-                       + 'vartype' + '\t'
-                       + 'gnomADG' + '\t'
-                       + 'gnomADE' + '\t'
-                       + 'ClinVar' + '\t'
-                       + 'MScon' + '\n')
-    for data in overfreqpc:
-        outputfileofp.write(data['_id'] + '\t'
-                         + data['rsid'] + '\t'
-                         + data['vartype'] + '\t'
-                         + str(data['gnomADG']) + '\t'
-                         + str(data['gnomADE']) + '\t'
-                         + str(data['ClinVar']) + '\t'
-                         + data['MScon'] + '\n')
-    outputfileofp.close()
-
-    #Write to candidatevariants.txt
-    outputfile = open('candidatevariants_' + name + '.txt', 'w')
-    outputfile.write('HGVS' + '\t'
-                       + 'RSID' + '\t'
-                       + 'vartype' + '\t'
-                       + 'gnomADG' + '\t'
-                       + 'gnomADE' + '\t'
-                       + 'ClinVar' + '\t'
-                       + 'MScon' + '\n')
+    #Output candidate:
+    outputfilec = open('candidates_' + name + '.txt', 'w')
+    #Write header
+    outputfilec.write('HGVS' + '\t'
+                     + 'RSID' + '\t'
+                     + 'VarType' + '\t'
+                     + 'gnomADG' + '\t'
+                     + 'gnomADE' + '\t'
+                     + 'ClinVar' + '\t'
+                     + 'MSCon' + '\t'
+                     + 'GeneList' + '\t'
+                     + 'BrainExpression' + '\n')
+    #Write data
     for data in candidate:
-        outputfile.write(data['_id'] + '\t'
+        outputfilec.write(data['_id'] + '\t'
                          + data['rsid'] + '\t'
                          + data['vartype'] + '\t'
                          + str(data['gnomADG']) + '\t'
                          + str(data['gnomADE']) + '\t'
                          + str(data['ClinVar']) + '\t'
-                         + data['MScon'] + '\n')
-    outputfile.close()
+                         + data['MScon'] + '\t'
+                         + json.dumps(data['genelist']) + '\t'
+                         + json.dumps(data['brain_expression']) + '\n'
+                         )
+    outputfilenbe.close()
 
     end = time.time()
     print('Processing time: ' + str(end - start))
@@ -631,6 +683,9 @@ def filtervariant(listanno, name = ""):
                         + '\n'
                         + '# Greater than 0.1% AF: '
                         + str(len(overfreqpc))
+                        + '\n'
+                        + '# Not expressed in brain: '
+                        + str(len(notbrainexpress))
                         + '\n'
                         + '# Candidates: '
                         + str(len(candidate))
@@ -775,7 +830,7 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
         if listanno.index(i)%1000 == 0:
             print (str(listanno.index(i)) + ' out of ' + str(len(listanno)) + ' written...')
 
-    print('All annotations written to file')
+    print('Annotations written to file')
 
     outputfile.close()
 
