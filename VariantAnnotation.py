@@ -52,8 +52,6 @@ LIST_ANNO = []
 LIST_VEP = []
 #LIST_MVI - holds myvariant.info annotations
 LIST_MVI = []
-#LIST_PROCESSED - holds filtered variant annotations
-LIST_PROCESSED = []
 
 while EXIT_PROGRAM == False:
     print('1) Import HGVS from .vcf files')
@@ -79,29 +77,64 @@ while EXIT_PROGRAM == False:
         option = int(input('Invalid selection; please select one of the options: '))
 
     print('')
+    #1) Import HGVS from .vcf files
     if option == 1:
-        va.vcftoHGVS()
+        try:
+            filename = input('Please enter the .vcf file to extract HGVS from: ')
+        except IoError:
+            print ('File not found.')
+            filename = input('Re-enter filename: ')
+        va.vcftoHGVS(filename)
 
+    #2) Generate filtered HGVS file
     if option == 2:
+        #Variables
         start = time.time()
-        lAffected = []
-        lControl = []
-
-        numFiles = int(input('How many files individuals would you like to use: '))
-
+        listaffected = []
+        listcontrol = []
+        numfiles = int(input('How many files individuals would you like to use: '))
         i = 0
-        while i < numFiles:
-            va.importHGVS(lAffected, lControl)
+
+        #Import the number of files that will be analyzed
+        while i < numfiles:
+            #Open the HGVS ID file
+            try:
+                filename = input('Please enter the name of the file listing HGVS IDs to be imported: ')
+                inputfile = open(filename, 'r')
+            except IOError:
+                print('File not found.')
+                filename = input('Re-enter filename: ')
+
+            #Ask user if the HGVS ID file is from an affected or control
+            cat = input('Enter "a" for HGVS IDs from affected, "c" from controls: ')
+            while cat != 'a' and cat != 'c':
+                cat = input('Please enter "a" for affected, and "c" for control: ')
+
+            #For affected:
+            if cat == 'a':
+                listaffected.append([])
+                li = len(listaffected) - 1
+                for idHGVS in inputfile:
+                    listaffected[li].append(line.strip('\n'))
+            #For control:
+            if cat == 'c':
+                listcontrol.append([])
+                li = len(listcontrol)- 1
+                for line in inputfile:
+                    listcontrol[li].append(line.strip('\n'))
+            print(filename + ' successfully imported.')
             i = i + 1
 
-        lCandidate = va.filteraffected(lAffected, lControl)
-        lglvariant = []
+        #Perform filtering
+        listfiltered= va.filteraffected(listaffected, listcontrol)
+        list_gl = []
 
+        #Remove any GL variants from the filtered list
         j = 0
-        while j < len(lCandidate):
-            if 'chrGL' in lCandidate[j]:
-                lglvariant.append(lCandidate[j])
-                del lCandidate[j]
+        while j < len(listfiltered):
+            if 'chrGL' in listfiltered[j]:
+                list_gl.append(listfiltered[j])
+                del listfiltered[j]
                 j = j - 1
             j = j + 1
 
@@ -125,17 +158,30 @@ while EXIT_PROGRAM == False:
                 optionannotation = int(input('Invalid selection; please select one of the options: '))
 
             if optionannotation == 1:
-
-                listHGVS = va.importfHGVS()
-
+                #Open HGVS ID file that will be annotated
+                try:
+                    filename = input('Please enter the name of the file listing HGVS IDs to be imported: ')
+                    inputfile = open(filename, 'r')
+                except IOError:
+                    print('File not found.')
+                    filename = input('Re-enter filename: ')
+                listHGVS = va.importHGVS(filename)
+                #Perform MVI annotation
                 start = time.time()
                 LIST_MVI = va.annotmvi(listHGVS)
                 end = time.time()
                 print('Total run time: ' + str(end - start) + '\n')
 
             elif optionannotation == 2:
-
-                listHGVS = va.importfHGVS()
+                #Open HGVS ID file that will be annotated
+                try:
+                    filename = input('Please enter the name of the file listing HGVS IDs to be imported: ')
+                    inputfile = open(filename, 'r')
+                except IOError:
+                    print('File not found.')
+                    filename = input('Re-enter filename: ')
+                listHGVS = va.importHGVS(filename)
+                #Perform VEP annotation
                 start = time.time()
                 LIST_VEP = va.annotvep(listHGVS)
                 end = time.time()
@@ -168,7 +214,7 @@ while EXIT_PROGRAM == False:
                 LIST_VEP = va.importanno()
                 print('Data imported.' + '\n')
             elif optionimport == 3:
-                LIST_ANNO = va.importmut()
+                LIST_ANNO = va.importanno()
                 print('Data imported.' + '\n')
             elif optionimport == 4:
                 exitimport = True
@@ -198,16 +244,13 @@ while EXIT_PROGRAM == False:
                 print('Export completed.' + '\n')
             elif optionexport == 3:
                 LIST_ANNO = va.combineanno(LIST_MVI, LIST_VEP)
-                va.writeanno(LIST_ANNO)
+                va.export(LIST_ANNO, 'annotated_mutations.txt')
             elif optionexport == 4:
                 exitexport = True
                 print('')
 
     elif option == 6:
         listfiltered = va.filtervariant(LIST_ANNO)
-        #LIST_PROCESSED = va.retrievevep(listfiltered, LIST_VEP)
-        #va.exportanno(LIST_PROCESSED, 'vepanno_candidates.txt')
-        #va.transcriptids(LIST_PROCESSED)
 
     elif option == 7:
         fullroutine();
