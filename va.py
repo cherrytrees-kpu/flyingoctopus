@@ -52,7 +52,7 @@ def importanno(filename):
     while inputfile_open == False:
         try:
             inputfile = open(filename, 'r')
-            inputfileopen = True
+            inputfile_open = True
         except IOError:
             print('File not found.\n')
             filename = input('Re-enter filename: ')
@@ -354,26 +354,26 @@ def dumpCV(anno_mvi):
                     if (rcv['clinical_significance'] == 'Pathogenic'
                         or rcv['clinical_significance'] == 'Likely pathogenic'
                         or rcv['clinical_significance'] == 'Pathogenic/Likely pathogenic'):
-                        numReport[0] = numReport[0] + 1
+                        num_report[0] = num_report[0] + 1
                     elif rcv['clinical_significance'] == 'Uncertain significance':
-                        numReport[1] = numReport[1] + 1
+                        num_report[1] = num_report[1] + 1
                     elif (rcv['clinical_significance'] == 'Benign'
                           or rcv['clinical_significance'] == 'Likely benign'
                           or rcv['clinical_significance'] == 'Benign/likely benign'):
-                        numReport[2] = numReport[2] + 1
+                        num_report[2] = num_report[2] + 1
                     else:
                         chk_flag = True
             if num_rcv <= 1:
                 if (anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Pathogenic'
                     or anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Likely pathogenic'
                     or anno_mvi['clinvar']['rcv']['clinical_significance'] =='Pathogenic/Likely pathogenic'):
-                    numReport[0] = 1
+                    num_report[0] = 1
                 elif anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Uncertain significance':
-                    numReport[1] = 1
+                    num_report[1] = 1
                 elif (anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Benign'
                       or anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Likely benign'
                       or anno_mvi['clinvar']['rcv']['clinical_significance'] =='Benign/Likely benign'):
-                    numReport[2] = 1
+                    num_report[2] = 1
                 else:
                     chk_flag = True
 
@@ -478,7 +478,7 @@ def dumpensemblgeneid(anno_vep):
 
     return geneids
 
-def combineanno(listmvi, listvep):
+def combineanno(listmvi, listvep, listHGVS):
     """
 
     combineanno - combines annotations from MVI and VEP together into one list of dictionaries
@@ -489,16 +489,15 @@ def combineanno(listmvi, listvep):
 
     """
     al = []
-    lc = importHGVS()
     i = 0
 
-    while i < len(lc):
+    while i < len(listHGVS):
         if i%100 == 0:
-            print(str(i) + ' out of ' + str(len(lc)) + ' completed..')
-        if str(type(listmvi[i])) != "<class 'NoneType'>":
+            print(str(i) + ' out of ' + str(len(listHGVS)) + ' completed..')
+        if listmvi[i] is not None:
             al.append(dict({'_id':listmvi[i]['_id'],
                             'rsid':dumpRSID(listmvi[i]),
-                            'vartype':dumpvartype(listmvi[i]),
+                            'vartype':dumpvartype(listHGVS[i]),
                             'gnomADG':dumpgnomADG(listmvi[i]),
                             'gnomADE':dumpgnomADE(listmvi[i]),
                             'ClinVar':dumpCV(listmvi[i]),
@@ -506,10 +505,10 @@ def combineanno(listmvi, listvep):
                             'genelist':dumpensemblgeneid(listvep[i])
                             }))
 
-        if str(type(listmvi[i])) == "<class 'NoneType'>":
-            al.append(dict({'_id':lc[i],
+        if listmvi[i] is None:
+            al.append(dict({'_id':listHGVS[i],
                             'rsid':'N/A',
-                            'vartype':'N/A',
+                            'vartype':dumpvartype(listHGVS[i]),
                             'gnomADG':'N/A',
                             'gnomADE':'N/A',
                             'ClinVar':'N/A',

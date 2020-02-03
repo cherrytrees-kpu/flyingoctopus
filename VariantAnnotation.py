@@ -233,8 +233,10 @@ while EXIT_PROGRAM == False:
             elif optionexport == 2:
                 va.exportanno(LIST_VEP, 'vepannotation.txt')
             elif optionexport == 3:
-                LIST_ANNO = va.combineanno(LIST_MVI, LIST_VEP)
-                va.export(LIST_ANNO, 'annotated_mutations.txt')
+                filename = input('Please enter the name of the file being imported : ')
+                listHGVS = va.importHGVS(filename)
+                LIST_ANNO = va.combineanno(LIST_MVI, LIST_VEP, listHGVS)
+                va.exportanno(LIST_ANNO, 'annotated_mutations.txt')
             elif optionexport == 4:
                 exitexport = True
                 print('')
