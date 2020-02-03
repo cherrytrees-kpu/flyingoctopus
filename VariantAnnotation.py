@@ -79,11 +79,8 @@ while EXIT_PROGRAM == False:
     print('')
     #1) Import HGVS from .vcf files
     if option == 1:
-        try:
-            filename = input('Please enter the .vcf file to extract HGVS from: ')
-        except IoError:
-            print ('File not found.')
-            filename = input('Re-enter filename: ')
+
+        filename = input('Please enter the .vcf file to extract HGVS from: ')
         va.vcftoHGVS(filename)
 
     #2) Generate filtered HGVS file
@@ -115,13 +112,13 @@ while EXIT_PROGRAM == False:
                 listaffected.append([])
                 li = len(listaffected) - 1
                 for idHGVS in inputfile:
-                    listaffected[li].append(line.strip('\n'))
+                    listaffected[li].append(idHGVS.strip('\n'))
             #For control:
             if cat == 'c':
                 listcontrol.append([])
                 li = len(listcontrol)- 1
                 for line in inputfile:
-                    listcontrol[li].append(line.strip('\n'))
+                    listcontrol[li].append(idHGVS.strip('\n'))
             print(filename + ' successfully imported.')
             i = i + 1
 
@@ -143,6 +140,7 @@ while EXIT_PROGRAM == False:
         end = time.time()
         print('Total run time: ' + str(end - start) + '\n')
 
+    #3) Annotation
     elif option == 3:
         exitannotation = False
         while exitannotation == False:
@@ -159,12 +157,7 @@ while EXIT_PROGRAM == False:
 
             if optionannotation == 1:
                 #Open HGVS ID file that will be annotated
-                try:
-                    filename = input('Please enter the name of the file listing HGVS IDs to be imported: ')
-                    inputfile = open(filename, 'r')
-                except IOError:
-                    print('File not found.')
-                    filename = input('Re-enter filename: ')
+                filename = input('Please enter the name of the file listing HGVS IDs to be annotated: ')
                 listHGVS = va.importHGVS(filename)
                 #Perform MVI annotation
                 start = time.time()
@@ -174,12 +167,7 @@ while EXIT_PROGRAM == False:
 
             elif optionannotation == 2:
                 #Open HGVS ID file that will be annotated
-                try:
-                    filename = input('Please enter the name of the file listing HGVS IDs to be imported: ')
-                    inputfile = open(filename, 'r')
-                except IOError:
-                    print('File not found.')
-                    filename = input('Re-enter filename: ')
+                filename = input('Please enter the name of the file listing HGVS IDs to be annotated: ')
                 listHGVS = va.importHGVS(filename)
                 #Perform VEP annotation
                 start = time.time()
@@ -208,13 +196,17 @@ while EXIT_PROGRAM == False:
                 optionimport = int(input('Invalid selection; please select one of the options: '))
 
             if optionimport == 1:
-                LIST_MVI = va.importanno()
+                #Open the HGVS ID file
+                filename = input('Please enter the name of the file being imported : ')
+                LIST_MVI = va.importanno(filename)
                 print('Data imported.' + '\n')
             elif optionimport == 2:
-                LIST_VEP = va.importanno()
+                filename = input('Please enter the name of the file being imported : ')
+                LIST_VEP = va.importanno(filename)
                 print('Data imported.' + '\n')
             elif optionimport == 3:
-                LIST_ANNO = va.importanno()
+                filename = input('Please enter the name of the file being imported : ')
+                LIST_ANNO = va.importanno(filename)
                 print('Data imported.' + '\n')
             elif optionimport == 4:
                 exitimport = True
@@ -238,10 +230,8 @@ while EXIT_PROGRAM == False:
 
             if optionexport == 1:
                 va.exportanno(LIST_MVI, 'myvariantannotation.txt')
-                print('Export completed.' + '\n')
             elif optionexport == 2:
                 va.exportanno(LIST_VEP, 'vepannotation.txt')
-                print('Export completed.' + '\n')
             elif optionexport == 3:
                 LIST_ANNO = va.combineanno(LIST_MVI, LIST_VEP)
                 va.export(LIST_ANNO, 'annotated_mutations.txt')

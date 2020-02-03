@@ -29,6 +29,8 @@ def importHGVS(filename):
         except IOError:
             print('File not found.\n')
 
+            filename = input('Re-enter filename: ')
+
     #Import data into listHGVS
     for line in inputfile:
         listHGVS.append(line.strip('\n'))
@@ -53,6 +55,7 @@ def importanno(filename):
             inputfileopen = True
         except IOError:
             print('File not found.\n')
+            filename = input('Re-enter filename: ')
 
     #Import the data
     for line in inputfile:
@@ -70,10 +73,15 @@ def vcftoHGVS(filename):
     """
     listHGVS = []
 
-    try:
-        listHGVS = list(myvariant.get_hgvs_from_vcf(filename))
-    except IOError:
-        print('File not found.\n')
+    inputfile_open = False
+
+    while inputfile_open == False:
+        try:
+            listHGVS = list(myvariant.get_hgvs_from_vcf(filename))
+            inputfile_open = True
+        except IOError:
+            print('File not found.\n')
+            filename = input('Re-enter filename: ')
 
     #Accept name input from user
     name = input('Please enter an identifier for your file: ')
@@ -81,12 +89,14 @@ def vcftoHGVS(filename):
 
     #Write to file
     print('Writing to file...')
-    for idHGVS in listHGVS:
-        outputfile.write(idHGVS)
-        #Check to see if the last element has been reached before entering a
-        #newline character
-        if listHGVS.index(idHGVS) != (len(listHGVS) - 1):
-            outputfile.write ('\n')
+    #for idHGVS in listHGVS:
+    length = len(listHGVS)
+    i = 0
+    while i < (length - 1):
+        outputfile.write(listHGVS[i])
+        outputfile.write ('\n')
+        i = i + 1
+    outputfile.write(listHGVS[i])
     print('Done.')
 
     outputfile.close()
@@ -130,12 +140,13 @@ def exportanno(listanno, filename):
 
     #For each annotation in the annotation list, dump the JSON data to file
     for anno in listanno:
-        outputfile.write(json.dumps(y))
+        outputfile.write(json.dumps(anno))
         #Check to see if the last element has been reached before entering a
         #newline character
         if listanno.index(anno) != (len(listanno)-1):
             outputfile.write('\n')
     outputfile.close()
+    print('Export completed.' + '\n')
 
 def writeanno(listanno, name = "annotated_mutations.txt"):
     """
@@ -195,11 +206,11 @@ def annotmvi(listHGVS):
 
     #For each HGVS ID in the list, retrieve the annotation
     for idHGVS in listHGVS:
-        listmvi.append(mv.getvariant(HGVSID, fields = ['dbsnp.rsid',
+        listmvi.append(mv.getvariant(idHGVS, fields = ['dbsnp.rsid',
                                             'dbsnp.alleles',
                                             'dbsnp.vartype',
                                             'dbsnp.gene',
-                                            'clinvar.rcv.clinical_significance',
+                                            'clinvar',
                                             'gnomad_genome.af', 'gnomad_exome.af']))
 
         #Progress tracker
@@ -235,14 +246,14 @@ def annotvep(listHGVS):
 
     #Annotation process
     print('Initiating annotation...')
-    while i < len(lc):
+    while i < len(listHGVS):
 
         #Retrieve 200 HGVS IDs - maximum for the batch query to the VEP REST API
         if u != (len(listHGVS) - 1):
             rangeHGVS = listHGVS[i:u]
         if u == (len(listHGVS) - 1):
             rangeHGVS = listHGVS[i:]
-        p_rangeHGVS = str(data).replace("'", '"')
+        p_rangeHGVS = str(rangeHGVS).replace("'", '"')
 
         #Retrieval of data from VEP REST API
         r = requests.post(server+ext, headers=headers, data=('{ "hgvs_notations" : ' + p_rangeHGVS + ' }'))
@@ -535,12 +546,12 @@ def filteraffected(listaffected, listcontrol):
 
         #Check if HGVS is in listControl. If yes, set candidate to False
         for c in listcontrol:
-            if listAffected[0][i] in c:
+            if listaffected[0][i] in c:
                 candidate = False
 
         #Write to file
         if candidate == True:
-            listcandidate.append(listaffected[0][i].strip('\n'))
+            listfiltered.append(listaffected[0][i].strip('\n'))
 
         if i%1000 == 0:
             print(str(i) + '/' + str(len(listaffected[0])) + ' completed...')
@@ -548,7 +559,7 @@ def filteraffected(listaffected, listcontrol):
         i = i + 1
 
     print('Filtering completed.')
-    return listcandidate
+    return listfiltered
 
 def filternodata(anno):
     """
@@ -573,7 +584,7 @@ def filterfreq(anno):
     if (anno['gnomADG'] != 'N/A') and (anno['gnomADG'] is not None):
         if anno['gnomADG'] >= 0.001:
             overfreqpcflag = True
-    if (anno['gnomADE'] != 'N/A') and (anno['gnomADE'] != None)):
+    if (anno['gnomADE'] != 'N/A') and (anno['gnomADE'] != None):
         if anno['gnomADE'] >= 0.001:
             overfreqpcflag = True
 
