@@ -167,28 +167,62 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                      + 'gnomADG' + '\t'
                      + 'gnomADE' + '\t'
                      + 'ClinVar' + '\t'
-                     + 'MSCon' + '\t'
-                     + 'GeneList' + '\n')
+                     + 'Most Severe Consequence' + '\t'
+                     + 'Genes Affected' + '\t'
+                     + 'Relevant Transcripts' + '\n')
 
     #Write data
-    for i in listanno:
+    i = 0
+    #Write until but not including last element
+    while i < (len(listanno) - 1):
 
-        outputfile.write(i['_id'] + '\t'
-                         + i['rsid'] + '\t'
-                         + i['vartype'] + '\t'
-                         + str(i['gnomADG']) + '\t'
-                         + str(i['gnomADE']) + '\t'
-                         + str(i['ClinVar']) + '\t'
-                         + i['MScon'] + '\t'
-                         + json.dumps(i['genelist'])
+        genelist = []
+        relevanttranscripts = []
+
+        if listanno[i]['genelist'][0] is not None:
+            for gene in listanno[i]['genelist']:
+                 genelist.append(gene['gene_symbol'])
+        if listanno[i]['relevanttranscripts'] is not None:
+            for transcript in listanno[i]['relevanttranscripts']:
+                relevanttranscripts.append(transcript['transcript_id'])
+
+        outputfile.write(str(listanno[i]['_id']) + '\t'
+                         + str(listanno[i]['rsid']) + '\t'
+                         + str(listanno[i]['vartype']) + '\t'
+                         + str(listanno[i]['gnomADG']) + '\t'
+                         + str(listanno[i]['gnomADE']) + '\t'
+                         + str(listanno[i]['ClinVar']) + '\t'
+                         + str(listanno[i]['MScon']) + '\t'
+                         + str(genelist) + '\t'
+                         + str(relevanttranscripts) + '\n'
                          )
 
-        if listanno.index(i) != (len(listanno)-1):
-            outputfile.write('\n')
-
         #Progress Indicator
-        if listanno.index(i)%1000 == 0:
-            print (str(listanno.index(i)) + ' out of ' + str(len(listanno)) + ' written...')
+        if i%1000 == 0:
+            print (str(i) + ' out of ' + str(len(listanno)) + ' written...')
+
+        i = i + 1
+    #Write last element
+    last_genelist = []
+    last_relevanttranscripts = []
+
+    if listanno[i]['genelist'][0] is not None:
+        for gene in listanno[i]['genelist']:
+             last_genelist.append(gene['gene_symbol'])
+    if listanno[i]['relevanttranscripts'] is not None:
+        for transcript in listanno[i]['relevanttranscripts']:
+            last_relevanttranscripts.append(transcript['transcript_id'])
+
+    outputfile.write(str(listanno[i]['_id']) + '\t'
+                     + str(listanno[i]['rsid']) + '\t'
+                     + str(listanno[i]['vartype']) + '\t'
+                     + str(listanno[i]['gnomADG']) + '\t'
+                     + str(listanno[i]['gnomADE']) + '\t'
+                     + str(listanno[i]['ClinVar']) + '\t'
+                     + str(listanno[i]['MScon']) + '\t'
+                     + str(last_genelist) + '\t'
+                     + str(last_relevanttranscripts)
+                     )
 
     print('Annotations written to file')
 
@@ -343,41 +377,43 @@ def dumpCV(anno_mvi):
     num_report = [0, 0, 0]
     chk_flag = False
 
-    #Check if 'clinvar' exists
-    if 'clinvar' in anno_mvi:
-        #Check if 'rcv' exists
-        if 'rcv' in anno_mvi['clinvar']:
-            num_rcv = len(anno_mvi['clinvar']['rcv'])
-            #Number of RCV entries affects parsing of the json data
-            if num_rcv > 1:
-                for rcv in anno_mvi['clinvar']['rcv']:
-                    if (rcv['clinical_significance'] == 'Pathogenic'
-                        or rcv['clinical_significance'] == 'Likely pathogenic'
-                        or rcv['clinical_significance'] == 'Pathogenic/Likely pathogenic'):
-                        num_report[0] = num_report[0] + 1
-                    elif rcv['clinical_significance'] == 'Uncertain significance':
-                        num_report[1] = num_report[1] + 1
-                    elif (rcv['clinical_significance'] == 'Benign'
-                          or rcv['clinical_significance'] == 'Likely benign'
-                          or rcv['clinical_significance'] == 'Benign/likely benign'):
-                        num_report[2] = num_report[2] + 1
+    #Check if there's an annotation
+    if anno_mvi is not None:
+        #Check if 'clinvar' exists
+        if 'clinvar' in anno_mvi:
+            #Check if 'rcv' exists
+            if 'rcv' in anno_mvi['clinvar']:
+                num_rcv = len(anno_mvi['clinvar']['rcv'])
+                #Number of RCV entries affects parsing of the json data
+                if num_rcv > 1:
+                    for rcv in anno_mvi['clinvar']['rcv']:
+                        if (rcv['clinical_significance'] == 'Pathogenic'
+                            or rcv['clinical_significance'] == 'Likely pathogenic'
+                            or rcv['clinical_significance'] == 'Pathogenic/Likely pathogenic'):
+                            num_report[0] = num_report[0] + 1
+                        elif rcv['clinical_significance'] == 'Uncertain significance':
+                            num_report[1] = num_report[1] + 1
+                        elif (rcv['clinical_significance'] == 'Benign'
+                              or rcv['clinical_significance'] == 'Likely benign'
+                              or rcv['clinical_significance'] == 'Benign/likely benign'):
+                            num_report[2] = num_report[2] + 1
+                        else:
+                            chk_flag = True
+                if num_rcv <= 1:
+                    if (anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Pathogenic'
+                        or anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Likely pathogenic'
+                        or anno_mvi['clinvar']['rcv']['clinical_significance'] =='Pathogenic/Likely pathogenic'):
+                        num_report[0] = 1
+                    elif anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Uncertain significance':
+                        num_report[1] = 1
+                    elif (anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Benign'
+                          or anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Likely benign'
+                          or anno_mvi['clinvar']['rcv']['clinical_significance'] =='Benign/Likely benign'):
+                        num_report[2] = 1
                     else:
                         chk_flag = True
-            if num_rcv <= 1:
-                if (anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Pathogenic'
-                    or anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Likely pathogenic'
-                    or anno_mvi['clinvar']['rcv']['clinical_significance'] =='Pathogenic/Likely pathogenic'):
-                    num_report[0] = 1
-                elif anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Uncertain significance':
-                    num_report[1] = 1
-                elif (anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Benign'
-                      or anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Likely benign'
-                      or anno_mvi['clinvar']['rcv']['clinical_significance'] =='Benign/Likely benign'):
-                    num_report[2] = 1
-                else:
-                    chk_flag = True
 
-            return num_report
+                return num_report
 
     else:
         return None
@@ -388,8 +424,9 @@ def dumpRSID(anno_mvi):
     Parameters: data - dictionary/list of the JSON data on the variant
     Return: the RSID
     """
-    if 'dbsnp' in anno_mvi:
-        return anno_mvi['dbsnp']['rsid']
+    if anno_mvi is not None:
+        if 'dbsnp' in anno_mvi:
+            return anno_mvi['dbsnp']['rsid']
     else:
         return None
 
@@ -414,10 +451,11 @@ def dumpgnomADG(anno_mvi):
     Parameters: data - dictionary/list of the JSON data on the variant
     Return: genome allele frequency
     """
-    if 'gnomad_genome' in anno_mvi:
-        if 'af' in anno_mvi['gnomad_genome']:
-            if 'af' in anno_mvi['gnomad_genome']['af']:
-                return anno_mvi['gnomad_genome']['af']['af']
+    if anno_mvi is not None:
+        if 'gnomad_genome' in anno_mvi:
+            if 'af' in anno_mvi['gnomad_genome']:
+                if 'af' in anno_mvi['gnomad_genome']['af']:
+                    return anno_mvi['gnomad_genome']['af']['af']
     else:
         return None
 
@@ -427,10 +465,11 @@ def dumpgnomADE(anno_mvi):
     Parameters: data - dictionary/list of the JSON data on the variant
     Return: exome allele frequency
     """
-    if 'gnomad_exome' in anno_mvi:
-        if 'af' in anno_mvi['gnomad_exome']:
-            if 'af' in anno_mvi['gnomad_exome']['af']:
-                return anno_mvi['gnomad_exome']['af']['af']
+    if anno_mvi is not None:
+        if 'gnomad_exome' in anno_mvi:
+            if 'af' in anno_mvi['gnomad_exome']:
+                if 'af' in anno_mvi['gnomad_exome']['af']:
+                    return anno_mvi['gnomad_exome']['af']['af']
     else:
         return None
 
@@ -478,6 +517,39 @@ def dumpensemblgeneid(anno_vep):
 
     return geneids
 
+def dumprelevanttranscripts(anno_vep):
+    #list_transcripts - holds all of the relevant transcripts
+    list_transcripts = []
+    nodataflag = True
+
+    #Check if the annotation exists
+    if anno_vep is not None:
+        #Check if 'transcript_consequences' exists
+        if 'transcript_consequences' in anno_vep:
+            nodataflag = False
+
+    #Do for each transcript
+    if nodataflag is False:
+        for transcript in anno_vep['transcript_consequences']:
+            relevantflag = False
+            #Do for each consequence term
+            for term in transcript['consequence_terms']:
+                if (term != 'intron_variant'
+                    and term != 'non_coding_transcript_exon_variant'
+                    and term != 'non_coding_transcript_variant'
+                    and term != 'upstream_gene_variant'
+                    and term != 'downstream_gene_variant'
+                    and term != 'synonymous_variant'
+                    and term != '5_prime_UTR_variant'
+                    and term != '3_prime_UTR_variant'):
+                    relevantflag = True
+
+            #Append to the list f relevant transcripts if it is relevant
+            if relevantflag is True:
+                list_transcripts.append(transcript)
+
+    return list_transcripts
+
 def combineanno(listmvi, listvep, listHGVS):
     """
 
@@ -520,6 +592,41 @@ def combineanno(listmvi, listvep, listHGVS):
 
     return al
 
+def combineanno2(listmvi, listvep, listHGVS):
+    #listanno - holds list of combined annotations
+    listanno = []
+    i = 0
+
+    #Do for every variant in listHGVS
+    while i < len(listHGVS):
+        #True if there's data
+        anno_mvi_flag = False
+        anno_vep_flag = False
+
+        #Check if there's data
+        if listmvi[i] is not None:
+            anno_mvi_flag = True
+        if listvep[i] is not None:
+            anno_vep_flag = True
+
+        #Progress tracker
+        if i%100 == 0:
+            print(str(i) + ' out of ' + str(len(listHGVS)) + ' completed..')
+
+        #Combine annotations
+        listanno.append(dict({'_id':listHGVS[i],
+                        'rsid':dumpRSID(listmvi[i]),
+                        'vartype':dumpvartype(listHGVS[i]),
+                        'gnomADG':dumpgnomADG(listmvi[i]),
+                        'gnomADE':dumpgnomADE(listmvi[i]),
+                        'ClinVar':dumpCV(listmvi[i]),
+                        'MScon':dumpconsequence(listvep[i]),
+                        'genelist':dumpensemblgeneid(listvep[i]),
+                        'relevanttranscripts':dumprelevanttranscripts(listvep[i])
+                        }))
+        i = i + 1
+
+    return listanno
 ##### Processing Functions #####################################################
 def filteraffected(listaffected, listcontrol):
     """
