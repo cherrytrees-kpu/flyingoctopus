@@ -366,6 +366,35 @@ def annothpa(data):
 
     return expression
 
+def annothpa2(listanno):
+    """
+    annothpa - pulls expression data from the Human Protein Atlas
+    Parameters: listanno - combined MVI and VEP annotations list
+    Returns: listanno but with expression data appended
+    """
+    listhpa = []
+    server = "http://www.proteinatlas.org/"
+
+    #Do for every variant in listanno
+    for anno in listanno:
+        #anno_hpa - temporarily holds the data from the Human Protein Atlas
+        anno_hpa = []
+        data_expression = []
+        #Get HPA annotation for every relevant gene that the variant affects
+        for gene in anno['genelist']:
+            r = requests.get(server + data['genelist'][i]['gene_id'] + '.json')
+            #Check if there was data returned, then add to anno_hpa
+            if r.status_code == requests.codes.ok:
+                anno_hpa.append(r.json())
+        #Loop through each gene that had annotations pulled
+        for gene in anno_hpa:
+                data_expression.append(dict({
+                                            'gene':gene['Gene'],
+                                            'RNAbrd':gene['RNA brain regional distribution']
+                }))
+        #Add to original annotation structure
+        anno['brain_expression'] = data_expression
+
 ##### Parsing Functions ########################################################
 def dumpCV(anno_mvi):
     """
@@ -497,21 +526,17 @@ def dumpensemblgeneid(anno_vep):
 
     geneids = []
     i = 0
+    relevant_transcripts = dumprelevanttranscripts(anno_vep)
 
-    if anno_vep is not None:
-        if 'transcript_consequences' in anno_vep:
-            while i < len(anno_vep['transcript_consequences']):
-                #Check if the gene_id is in the current list
-                names = {'gene_id': anno_vep['transcript_consequences'][i]['gene_id'],
-                        'gene_symbol': anno_vep['transcript_consequences'][i]['gene_symbol']
-                        }
-                if not(names in geneids):
-                    #geneids.append(data['transcript_consequences'][i]['gene_id'])
-                    geneids.append(names)
+    if relevant_transcripts != []:
+        for transcript in relevant_transcripts:
+            #Check if the gene_id is in the current list
+            names = {'gene_id': transcript['gene_id'],
+                    'gene_symbol': transcript['gene_symbol']
+                    }
 
-                i = i + 1
-        else:
-            geneids.append(None)
+            if not(names in geneids):
+                geneids.append(names)
     else:
         geneids.append(None)
 
@@ -551,48 +576,6 @@ def dumprelevanttranscripts(anno_vep):
     return list_transcripts
 
 def combineanno(listmvi, listvep, listHGVS):
-    """
-
-    combineanno - combines annotations from MVI and VEP together into one list of dictionaries
-    Parameters:
-    listmvi - list - contains a list of dictionaries of MVI information
-    listvep - list - contains a list of dictionaries of VEP information
-    Returns: a list containing both sets of information
-
-    """
-    al = []
-    i = 0
-
-    while i < len(listHGVS):
-        if i%100 == 0:
-            print(str(i) + ' out of ' + str(len(listHGVS)) + ' completed..')
-        if listmvi[i] is not None:
-            al.append(dict({'_id':listmvi[i]['_id'],
-                            'rsid':dumpRSID(listmvi[i]),
-                            'vartype':dumpvartype(listHGVS[i]),
-                            'gnomADG':dumpgnomADG(listmvi[i]),
-                            'gnomADE':dumpgnomADE(listmvi[i]),
-                            'ClinVar':dumpCV(listmvi[i]),
-                            'MScon':dumpconsequence(listvep[i]),
-                            'genelist':dumpensemblgeneid(listvep[i])
-                            }))
-
-        if listmvi[i] is None:
-            al.append(dict({'_id':listHGVS[i],
-                            'rsid':'N/A',
-                            'vartype':dumpvartype(listHGVS[i]),
-                            'gnomADG':'N/A',
-                            'gnomADE':'N/A',
-                            'ClinVar':'N/A',
-                            'MScon':dumpconsequence(listvep[i]),
-                            'genelist':dumpensemblgeneid(listvep[i])
-                            }))
-
-        i = i + 1
-
-    return al
-
-def combineanno2(listmvi, listvep, listHGVS):
     #listanno - holds list of combined annotations
     listanno = []
     i = 0
@@ -667,9 +650,9 @@ def filteraffected(listaffected, listcontrol):
     print('Filtering completed.')
     return listfiltered
 
-def filternodata(anno):
+def checknodata(anno):
     """
-    filternodata - checks if variant has any data
+    checknodata - checks if variant has any data
     Parameters: data - variant and its associated annotations
     Returns: True or False
     """
@@ -679,7 +662,7 @@ def filternodata(anno):
 
     return nodataflag
 
-def filterfreq(anno):
+def checkfreq(anno):
     """
     filterfreq - checks if variant above the frequency cut off
     Parameters: data - variant and its associated annotations
@@ -696,7 +679,7 @@ def filterfreq(anno):
 
     return overfreqpcflag
 
-def filtercons(anno):
+def checkcons(anno):
     """
     filtercons - checks if the variant is relevant
     Parameters: data - variant and its associated annotations

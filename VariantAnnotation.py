@@ -43,6 +43,83 @@ def fullroutine():
     #Filtervariant
     va.filtervariant(lanno, timelabel)
     print('Complete')
+
+def filternodata(listanno):
+    list_nodata = []
+    list_candidate = []
+
+    for anno in listanno:
+        nodata = va.checknodata(anno)
+        if nodata is True:
+            list_nodata.append(anno)
+        elif nodata is False:
+            list_candidate.append(anno)
+
+    return list_nodata, list_candidate
+
+def filterfreq(listanno):
+    list_overfreq = []
+    list_candidate = []
+
+    for anno in listanno:
+        overfreq = va.checkfreq(anno)
+        if overfreq is True:
+            list_overfreq.append(anno)
+        elif overfreq is False:
+            list_candidate.append(anno)
+
+    return list_overfreq, list_candidate
+
+def filtercons(listanno):
+    list_irrelevant = []
+    list_candidate = []
+
+    for anno in listanno:
+        irrelevant = va.checkcons(anno)
+        if irrelevant is True:
+            list_irrelevant.append(anno)
+        elif irrelevant is False:
+            list_candidate.append(anno)
+
+    return list_irrelevant, list_candidate
+
+def filterexpression(listanno):
+    list_hpa = []
+    list_notexpressedbrain = []
+    list_candidate = []
+
+    #Get annotation from Human Protein Atlas
+    for anno in listanno:
+        if anno['genelist'][0] is not None:
+            anno_hpa = va.annothpa(anno)
+            data_expression = []
+            #Loop through each gene that had annotations pulled
+            for gene in anno_hpa:
+                    data_expression.append(dict({
+                                                'gene':gene['Gene'],
+                                                'RNAbrd':gene['RNA brain regional distribution']
+                    }))
+            #Add to original annotation structure
+            anno['brain_expression'] = data_expression
+        else:
+            anno['brain_expression'] = None
+
+    #Filtering
+    for anno in listanno:
+        notbrainexpressflag = True
+        #Check each gene to see if its detected in brain
+        if anno['brain_expression'] is not None:
+            for gene in anno['brain_expression']:
+                if gene['RNAbrd'] != 'Not detected':
+                    notbrainexpressflag = False
+
+        if notbrainexpressflag is True:
+            list_notexpressedbrain.append(anno)
+        else:
+            list_candidate.append(anno)
+
+    return list_notexpressedbrain, list_candidate
+
 ##### Program Start ##################################################################
 #GLOBAL VARIABLES
 EXIT_PROGRAM = False
@@ -217,7 +294,7 @@ while EXIT_PROGRAM == False:
         while exitexport == False:
             print('1) Export myvariant.info annotation data')
             print('2) Export VEP annotation data')
-            print('3) Export tab-delimited data')
+            print('3) Export combined data')
             print('4) Return to main menu')
 
             optionexport = int(input('Select option: '))
@@ -242,7 +319,25 @@ while EXIT_PROGRAM == False:
                 print('')
 
     elif option == 6:
-        listfiltered = va.filtervariant(LIST_ANNO)
+        list_nodata = []
+        list_irrelevant = []
+        list_highfreq = []
+        list_notexpressedbrain = []
+        list_candidate = []
+        list_intermediate = []
+
+        #Conduct filtering
+        list_nodata, list_intermediate = filternodata(LIST_ANNO)
+        list_irrelevant, list_intermediate = filtercons(list_intermediate)
+        list_highfreq, list_intermediate = filterfreq(list_intermediate)
+        list_notexpressedbrain, list_candidate = filterexpression(list_intermediate)
+
+        #Export
+        va.exportanno(list_nodata, "Nodata.txt")
+        va.exportanno(list_irrelevant, "nonrelevant.txt")
+        va.exportanno(list_highfreq, "overfreqpc.txt")
+        va.exportanno(list_notexpressedbrain, "notbrainexpress.txt")
+        va.exportanno(list_candidate, "candidate_variants.txt")
 
     elif option == 7:
         fullroutine();
