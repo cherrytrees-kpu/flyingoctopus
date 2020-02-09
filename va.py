@@ -2,7 +2,7 @@
 va.py - wrapper for myvariant.info and Ensembl's VEP
 
 """
-##### Function definitions #######################################################################
+##### Function definitions #####################################################
 import json
 import time
 import requests
@@ -10,332 +10,54 @@ import sys
 import myvariant
 import datetime
 
-def outputHGVS(listHGVS, name = ""):
+##### Importing Functions ######################################################
+def importHGVS(filename):
     """
-
-    outputHGVS - outputs a file with the name 'HGVS_*name.txt' containing the list of HGVS ids
-    Parameters:
-    listHGVS - list - contains list ids
-    Returns: nothing; outputs to file 'HGVS_*name.txt'
-
-    """
-    index = 0
-
-    #Accept name input from user
-    if name != "":
-        name = input('Please enter an identifier for your file: ')
-    outputFile = open('HGVS_' + name + '.txt', 'w')
-
-    #Write to file
-    while(len(listHGVS)) > index:
-        outputFile.write(listHGVS[index])
-        if index != (len(listHGVS)-1):
-            outputFile.write('\n')
-        index = index + 1
-
-    outputFile.close()
-
-def filteraffected(listAffected, listControl):
-    """
-    filteraffected - filters from lists of HGVS IDs of affected and control individuals
-    Parameters:
-    listAffected - list - contains the list of HGVS ids of affected individuals
-    listControl - list - contains the list of HGVS ids of unaffected individuals
-    Returns: list containing candidate mutations only
-    """
-    i = 0
-    listCandidate = []
-
-    print('Filtering starting...')
-
-    while i < len(listAffected[0]):
-        candidate = True
-
-        #Check if HGVS is in all listAffected. If not, set candidate to false
-        for a in listAffected:
-            if (listAffected[0][i] in a) == False:
-                candidate = False
-
-        #Check if HGVS is in listControl. If yes, set candidate to False
-        for c in listControl:
-            if listAffected[0][i] in c:
-                candidate = False
-
-        #Write to file
-        if candidate == True:
-            listCandidate.append(listAffected[0][i].strip('\n'))
-
-        if i%1000 == 0:
-            print(str(i) + '/' + str(len(listAffected[0])) + ' completed...')
-
-        i = i + 1
-
-    print('Filtering completed.')
-    return listCandidate
-
-def importHGVS(listAffected, listControl):
-    """
-    importHGVS - imports HGVS IDs into the program for filtering
-    Paramters:
-    listAffected - list - list that will contain the HGVS IDs of affected individuals
-    listControl - list - list that will contain the HGVS IDs of unaffected inidividuals
-    Returns: none; lists passed to listAffected and listControl are populated
-    """
-    inputfileopen = False
-
-    while inputfileopen == False:
-        try:
-            fileName = input('Please enter the name of the file listing HGVS IDs to be imported: ')
-            inputFile = open(fileName, 'r')
-            inputfileopen = True
-        except IOError:
-            print ('File not found.\n')
-
-    cat = input('Enter "a" for HGVS IDs from affected, "c" from controls: ')
-
-    while cat != 'a' and cat != 'c':
-        cat = input('Please enter "a" for affected, and "c" for control: ')
-
-    if cat == 'a':
-        listAffected.append([])
-        li = len(listAffected) - 1
-        for line in inputFile:
-            listAffected[li].append(line.strip('\n'))
-
-    if cat == 'c':
-        listControl.append([])
-        li = len(listControl)- 1
-        for line in inputFile:
-            listControl[li].append(line.strip('\n'))
-
-    print(fileName + ' successfully imported.')
-
-def importfHGVS():
-    """
-    importfHGVS - imports filtered HGVS into the program
+    importHGVS - imports HGVS into the program
     Parameters: none
     Return: list containing the imported HGVS ids
     """
 
-    inputfileopen = False
+    inputfile_open = False
+    listHGVS = []
 
-    while inputfileopen == False:
+    #Open the file
+    while inputfile_open == False:
         try:
-            fileName = input('Please enter the filename of the file listing candidate HGVS IDs: ')
-            inputfile = open(fileName, 'r')
-            inputfileopen = True
+            inputfile = open(filename, 'r')
+            inputfile_open = True
         except IOError:
             print('File not found.\n')
 
-    listCandidate = []
+            filename = input('Re-enter filename: ')
 
+    #Import data into listHGVS
     for line in inputfile:
-        listCandidate.append(line.strip('\n'))
+        listHGVS.append(line.strip('\n'))
 
-    return listCandidate
+    return listHGVS
 
-def mutdata(mv, HGVSID):
+def importanno(filename):
     """
-    mutData - accepts HGVS, returns data on mutation
-    Parameters: HGVSID - string - the HGVS ID of the variant to be annotated
-    Return: dictionary/list containing the json data from myvariant.info
-    """
-    return mv.getvariant(HGVSID, fields = ['dbsnp.rsid', 'dbsnp.alleles', 'dbsnp.vartype', 'dbsnp.gene', 'clinvar.rcv.clinical_significance', 'gnomad_genome.af', 'gnomad_exome.af'])
-
-def statCV(data):
-    """
-    statCV - pull ClinVar data from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
-    Return: the ClinVar status
-    """
-    pFlag = 'Benign'
-
-    #Check if 'clinvar' exists
-    if 'clinvar' in data:
-        #Check if 'rcv' exists
-        if 'rcv' in data['clinvar']:
-            #Number of RCV entries affects parsing of the json data
-            if len(data['clinvar']['rcv']) > 1:
-                for y in data['clinvar']['rcv']:
-                    if y['clinical_significance'] == 'Pathogenic' or y['clinical_significance'] == 'Likely pathogenic' or y['clinical_significance'] == 'Pathogenic/Likely pathogenic':
-                        pFlag = 'Pathogenic'
-                    elif y['clinical_significance'] == 'Uncertain significance':
-                        pFlag = 'Uncertain significance'
-            if len(data['clinvar']['rcv']) <= 1:
-                if data['clinvar']['rcv']['clinical_significance'] == 'Pathogenic' or data['clinvar']['rcv']['clinical_significance'] == 'Likely pathogenic' or data['clinvar']['rcv']['clinical_significance'] =='Pathogenic/Likely pathogenic':
-                    pFlag = 'Pathogenic'
-                elif data['clinvar']['rcv']['clinical_significance'] == 'Uncertain significance':
-                    pFlag = 'Uncertain significance'
-            return pFlag
-    else:
-        return 'N/A'
-
-def dumpCV(data):
-    """
-    dump_CV - pull ClinVar data from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
-    Return: list containing number of pathogenic, uncertain significance, and benign reports
-    """
-    #0 - pathogenic, 1 - uncertain significance, 2 - benign
-    numReport = [0, 0, 0]
-    chkFlag = False
-
-    #Check if 'clinvar' exists
-    if 'clinvar' in data:
-        #Check if 'rcv' exists
-        if 'rcv' in data['clinvar']:
-            l = len(data['clinvar']['rcv'])
-            #Number of RCV entries affects parsing of the json data
-            if l > 1:
-                for y in data['clinvar']['rcv']:
-                    if (y['clinical_significance'] == 'Pathogenic'
-                        or y['clinical_significance'] == 'Likely pathogenic'
-                        or y['clinical_significance'] == 'Pathogenic/Likely pathogenic'):
-                        numReport[0] = numReport[0] + 1
-                    elif y['clinical_significance'] == 'Uncertain significance':
-                        numReport[1] = numReport[1] + 1
-                    elif (y['clinical_significance'] == 'Benign'
-                          or y['clinical_significance'] == 'Likely benign'
-                          or y['clinical_significance'] == 'Benign/likely benign'):
-                        numReport[2] = numReport[2] + 1
-                    else:
-                        chkFlag = True
-            if l <= 1:
-                if (data['clinvar']['rcv']['clinical_significance'] == 'Pathogenic'
-                    or data['clinvar']['rcv']['clinical_significance'] == 'Likely pathogenic'
-                    or data['clinvar']['rcv']['clinical_significance'] =='Pathogenic/Likely pathogenic'):
-                    numReport[0] = 1
-                elif data['clinvar']['rcv']['clinical_significance'] == 'Uncertain significance':
-                    numReport[1] = 1
-                elif (data['clinvar']['rcv']['clinical_significance'] == 'Benign'
-                      or data['clinvar']['rcv']['clinical_significance'] == 'Likely benign'
-                      or data['clinvar']['rcv']['clinical_significance'] =='Benign/Likely benign'):
-                    numReport[2] = 1
-                else:
-                    chkFlag = True
-    #Output
-    #print ('Pathogenic: ' + str(numReport[0]))
-    #print ('Uncertain Significance: ' + str(numReport[1]))
-    #print ('Benign: ' + str(numReport[2]))
-
-            #if chkFlag == True:
-            #   print ('Additional entry also denoted')
-
-            return numReport
-
-    else:
-        return 'N/A'
-
-def dumpRSID(data):
-    """
-    dumpRSID - pull the dbSNP RSID from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
-    Return: the RSID
-    """
-    if 'dbsnp' in data:
-        return data['dbsnp']['rsid']
-    else:
-        return 'N/A'
-
-def dumpvartype(data):
-    """
-    dumpvartype - pull the vartype from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
-    Return: vartype
-    """
-    if 'dbsnp' in data:
-        return data['dbsnp']['vartype']
-    else:
-        return 'N/A'
-
-def dumpgnomADG(data):
-    """
-    dumpgnomADG - pull the gnomAD allele frequency (inc. genome sequences) from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
-    Return: genome allele frequency
-    """
-    if 'gnomad_genome' in data:
-        if 'af' in data['gnomad_genome']:
-            if 'af' in data['gnomad_genome']['af']:
-                return data['gnomad_genome']['af']['af']
-    else:
-        return 'N/A'
-
-def dumpgnomADE(data):
-    """
-    dumpgnomADE - pull the gnomAD allele frequency (excl. genome sequences) from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
-    Return: exome allele frequency
-    """
-    if 'gnomad_exome' in data:
-        if 'af' in data['gnomad_exome']:
-            if 'af' in data['gnomad_exome']['af']:
-                return data['gnomad_exome']['af']['af']
-    else:
-        return 'N/A'
-
-def dumpconsequence(data):
-    """
-    dumpconsequence - pull the most severe consequence from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
-    Return: most severe consequence
-    """
-
-    consequence = ""
-
-    if str(type(data)) != "<class 'NoneType'>":
-        consequence = data['most_severe_consequence']
-    else:
-        consequence = 'N/A'
-    return consequence
-
-def dumpensemblgeneid(data):
-    """
-    dumpensemblgeneid - pull the gene IDs from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
-    Return: list of gene IDs that the variant affects
-    """
-
-    geneids = []
-    i = 0
-
-    if str(type(data)) != "<class 'NoneType'>":
-        if 'transcript_consequences' in data:
-            while i < len(data['transcript_consequences']):
-                #Check if the gene_id is in the current list
-                names = {'gene_id': data['transcript_consequences'][i]['gene_id'],
-                        'gene_symbol': data['transcript_consequences'][i]['gene_symbol']
-                        }
-                if not(names in geneids):
-                    #geneids.append(data['transcript_consequences'][i]['gene_id'])
-                    geneids.append(names)
-
-                i = i + 1
-        else:
-            geneids.append('N/A')
-    else:
-        geneids.append('N/A')
-
-    return geneids
-
-def importanno():
-    """
-    importanno - from a file containing json.dumps annotation data, import it as a list of dictionaries
-    Parameters: none
+    importanno - from a file containing json.dumps annotation data, import it as
+    a list of dictionaries
+    Parameters: filename - name of file to open
     Return: a list of dictionaries of annotation data
     """
-    inputfileopen = False
 
-    while inputfileopen == False:
-        try:
-            filename = input('Enter the name of the data file to be imported: ')
-            inputfile = open(filename, 'r')
-            inputfileopen = True
-        except IOError:
-            print('File not found.\n')
-
+    inputfile_open = False
     listdata = []
 
+    #Open the file
+    while inputfile_open == False:
+        try:
+            inputfile = open(filename, 'r')
+            inputfile_open = True
+        except IOError:
+            print('File not found.\n')
+            filename = input('Re-enter filename: ')
+
+    #Import the data
     for line in inputfile:
         listdata.append(json.loads(line))
 
@@ -343,7 +65,210 @@ def importanno():
 
     return listdata
 
-def annotvep(lc):
+def vcftoHGVS(filename):
+    """
+    vcftoHGVS - calls the myvariant.info get_hgvs_from_vcf function
+    Parameters: None
+    Returns: none; outputs a file containing all of the HGVS IDs
+    """
+    listHGVS = []
+
+    inputfile_open = False
+
+    while inputfile_open == False:
+        try:
+            listHGVS = list(myvariant.get_hgvs_from_vcf(filename))
+            inputfile_open = True
+        except IOError:
+            print('File not found.\n')
+            filename = input('Re-enter filename: ')
+
+    #Accept name input from user
+    name = input('Please enter an identifier for your file: ')
+    outputfile = open('HGVS_' + name + '.txt', 'w')
+
+    #Write to file
+    print('Writing to file...')
+    #for idHGVS in listHGVS:
+    length = len(listHGVS)
+    i = 0
+    while i < (length - 1):
+        outputfile.write(listHGVS[i])
+        outputfile.write ('\n')
+        i = i + 1
+    outputfile.write(listHGVS[i])
+    print('Done.')
+
+    outputfile.close()
+
+##### Exporting Functions ######################################################
+def outputHGVS(listHGVS, name = ""):
+    """
+    outputHGVS - outputs a file with the name 'HGVS_*name.txt' containing the
+    list of HGVS ids
+    Parameters:
+    listHGVS - list - contains list ids
+    Returns: nothing; outputs to file 'HGVS_*name.txt'
+
+    """
+    i = 0
+
+    #Accept name for output file from user
+    if name != "":
+        name = input('Please enter an identifier for your file: ')
+    outputfile = open('HGVS_' + name + '.txt', 'w')
+
+    #Write to file
+    while(len(listHGVS)) > index:
+        outputfile.write(listHGVS[i])
+        if i != (len(listHGVS)-1):
+            outputfile.write('\n')
+        i = i + 1
+
+    outputFile.close()
+
+def exportanno(listanno, filename):
+    """
+    exportanno - exports raw annotation data
+    Parameters:
+    listanno - list - list of dictionaries containing raw JSON data
+    filename - string - name of the file to output to
+    Returns: none; outputs to file with filename
+    """
+    #Create output file
+    outputfile = open(filename, 'w')
+
+    #For each annotation in the annotation list, dump the JSON data to file
+    for anno in listanno:
+        outputfile.write(json.dumps(anno))
+        #Check to see if the last element has been reached before entering a
+        #newline character
+        if listanno.index(anno) != (len(listanno)-1):
+            outputfile.write('\n')
+    outputfile.close()
+    print('Export completed.' + '\n')
+
+def writeanno(listanno, name = "annotated_mutations.txt"):
+    """
+    writeanno - export annotations to file, tab delimited.
+    Parameters:
+    listanno - list - contains all of the information to be exported
+    Return: none; outputs to a file named annotated_mutations.txt
+    """
+    print('Writing to file...')
+
+    outputfile = open(name, 'w')
+
+    #Output:
+    #Write header
+    outputfile.write('HGVS' + '\t'
+                     + 'RSID' + '\t'
+                     + 'VarType' + '\t'
+                     + 'gnomADG' + '\t'
+                     + 'gnomADE' + '\t'
+                     + 'ClinVar' + '\t'
+                     + 'Most Severe Consequence' + '\t'
+                     + 'Genes Affected' + '\t'
+                     + 'Relevant Transcripts' + '\n')
+
+    #Write data
+    i = 0
+    #Write until but not including last element
+    while i < (len(listanno) - 1):
+
+        genelist = []
+        relevanttranscripts = []
+
+        #For genelist
+        if listanno[i]['genelist'][0] is not None:
+            for gene in listanno[i]['genelist']:
+                 genelist.append(gene['gene_symbol'])
+        #For relevanttranscripts
+        if listanno[i]['relevanttranscripts'] is not None:
+            for transcript in listanno[i]['relevanttranscripts']:
+                relevanttranscripts.append(transcript['transcript_id'])
+
+        outputfile.write(str(listanno[i]['_id']) + '\t'
+                         + str(listanno[i]['rsid']) + '\t'
+                         + str(listanno[i]['vartype']) + '\t'
+                         + str(listanno[i]['gnomADG']) + '\t'
+                         + str(listanno[i]['gnomADE']) + '\t'
+                         + str(listanno[i]['ClinVar']) + '\t'
+                         + str(listanno[i]['MScon']) + '\t'
+                         + str(genelist) + '\t'
+                         + str(relevanttranscripts) + '\t'
+                         )
+
+        if 'brain_expression' in listanno[i]:
+            if listanno[i]['brain_expression'] is not None:
+                outputfile.write(str(listanno[i]['brain_expression']))
+
+        outputfile.write('\n')
+
+        #Progress Indicator
+        if i%1000 == 0:
+            print (str(i) + ' out of ' + str(len(listanno)) + ' written...')
+
+        i = i + 1
+    #Write last element
+    last_genelist = []
+    last_relevanttranscripts = []
+
+    if listanno[i]['genelist'][0] is not None:
+        for gene in listanno[i]['genelist']:
+             last_genelist.append(gene['gene_symbol'])
+    if listanno[i]['relevanttranscripts'] is not None:
+        for transcript in listanno[i]['relevanttranscripts']:
+            last_relevanttranscripts.append(transcript['transcript_id'])
+
+    outputfile.write(str(listanno[i]['_id']) + '\t'
+                     + str(listanno[i]['rsid']) + '\t'
+                     + str(listanno[i]['vartype']) + '\t'
+                     + str(listanno[i]['gnomADG']) + '\t'
+                     + str(listanno[i]['gnomADE']) + '\t'
+                     + str(listanno[i]['ClinVar']) + '\t'
+                     + str(listanno[i]['MScon']) + '\t'
+                     + str(last_genelist) + '\t'
+                     + str(last_relevanttranscripts) + '\t'
+                     )
+
+    if 'brain_expression' in listanno[i]:
+        if listanno[i]['brain_expression'] is not None:
+            outputfile.write(str(listanno[i]['brain_expression']))
+
+    print('Annotations written to file')
+
+    outputfile.close()
+
+##### Annotation functions #####################################################
+def annotmvi(listHGVS):
+    """
+    annotmvi - accepts HGVS, returns data on mutation
+    Parameters: listHGVS: list of HGVS IDs to retrieve annotations for
+    Return: dictionary/list containing the json data from myvariant.info
+    """
+    listmvi = []
+    mv = myvariant.MyVariantInfo()
+
+    #For each HGVS ID in the list, retrieve the annotation
+    for idHGVS in listHGVS:
+        listmvi.append(mv.getvariant(idHGVS, fields = ['dbsnp.rsid',
+                                            'dbsnp.alleles',
+                                            'dbsnp.vartype',
+                                            'dbsnp.gene',
+                                            'clinvar',
+                                            'gnomad_genome.af', 'gnomad_exome.af']))
+
+        #Progress tracker
+        if listHGVS.index(idHGVS)%100 == 0:
+            print (str(listHGVS.index(idHGVS))
+                    + ' out of '
+                    + str(len(listHGVS))
+                    + ' written...')
+
+    return listmvi
+
+def annotvep(listHGVS):
     """
     annotvep - from a list of HGVS IDs, retrieve all VEP annotations
     Paramters:
@@ -362,22 +287,22 @@ def annotvep(lc):
     ext = "/vep/human/hgvs"
     headers={ "Content-Type" : "application/json", "Accept" : "application/json"}
 
-    #annotlist - will store all of the data
-    annotlist = []
+    #listvep - will store all of the data
+    listvep = []
 
     #Annotation process
     print('Initiating annotation...')
-    while i < len(lc):
+    while i < len(listHGVS):
 
         #Retrieve 200 HGVS IDs - maximum for the batch query to the VEP REST API
-        if u != (len(lc) - 1):
-            data = lc[i:u]
-        if u == (len(lc) - 1):
-            data = lc[i:]
-        pdata = str(data).replace("'", '"')
+        if u != (len(listHGVS) - 1):
+            rangeHGVS = listHGVS[i:u]
+        if u == (len(listHGVS) - 1):
+            rangeHGVS = listHGVS[i:]
+        p_rangeHGVS = str(rangeHGVS).replace("'", '"')
 
         #Retrieval of data from VEP REST API
-        r = requests.post(server+ext, headers=headers, data=('{ "hgvs_notations" : ' + pdata + ' }'))
+        r = requests.post(server+ext, headers=headers, data=('{ "hgvs_notations" : ' + p_rangeHGVS + ' }'))
 
         #Error handling
         if not r.ok:
@@ -388,66 +313,44 @@ def annotvep(lc):
         decoded = r.json()
 
         #Check for missing annotations
-        if len(data) != len(decoded):
-            print(str(len(data) - len(decoded)) + ' annotations are missing')
+        if len(rangeHGVS) != len(decoded):
+            print(str(len(rangeHGVS)
+                    - len(decoded))
+                    + ' annotations are missing')
             try:
                 q = 0
-                for hgvs in data:
-                    if data.index(hgvs) < len(decoded):
-                        if hgvs != decoded[q]['id']:
-                            decoded.insert(data.index(hgvs), None)
+                for idHGVS in rangeHGVS:
+                    if rangeHGVS.index(idHGVS) < len(decoded):
+                        if idHGVS != decoded[q]['id']:
+                            decoded.insert(rangeHGVS.index(idHGVS), None)
                         q = q + 1
 
-                    if data.index(hgvs) >= len(decoded):
+                    if rangeHGVS.index(hgvs) >= len(decoded):
                         decoded.append(None)
             except:
-                print('Issue between ' + str(data[0]) + 'and ' + str(data[len(data)-1]))
+                print('Issue between '
+                        + str(rangeHGVS[0])
+                        + 'and '
+                        + str(rangeHGVS[len(rangeHGVS)-1]))
                 print(len(decoded))
 
         #Add these results to annot list
-        for y in decoded:
-            annotlist.append(y)
+        for anno in decoded:
+            listvep.append(anno)
 
-        print (str(u) + ' out of ' + str(len(lc)) + ' completed...')
+        print (str(u) + ' out of ' + str(len(listHGVS)) + ' completed...')
 
         i = i + 200
         u = u + 200
 
-        if u > len(lc):
-            u = len(lc) - 1
+        if u > len(listHGVS):
+            u = len(listHGVS) - 1
 
     #Processing time tracker
     end = time.time()
     print('Processing time: ' + str(end - start))
 
-    return annotlist
-
-def annotmvi(lc):
-    """
-    annotmvi - from a list of HGVS IDs, retrieve all myvariant.info annotations
-    Parameters:
-    lc - list - list of HGVS ids
-    Return: a list of the annotation data
-    """
-    #Import candidate mutation list
-    al = []
-    mv = myvariant.MyVariantInfo()
-
-    for HGVS in lc:
-
-        data = mv.getvariant(HGVS, fields = ['dbsnp.rsid',
-                                               'dbsnp.alleles',
-                                               'dbsnp.vartype',
-                                               'dbsnp.gene',
-                                               'clinvar.rcv.clinical_significance',
-                                               'gnomad_genome.af', 'gnomad_exome.af'])
-        al.append(data)
-
-        if lc.index(HGVS)%1000 == 0:
-            print (str(lc.index(HGVS)) + ' out of ' + str(len(lc)) + ' variants annotated...')
-
-    print('All samples annotated')
-    return al
+    return listvep
 
 def annothpa(data):
     """
@@ -475,506 +378,319 @@ def annothpa(data):
 
     return expression
 
-def filternodata(data):
+##### Parsing Functions ########################################################
+def dumpCV(anno_mvi):
     """
-    filternodata - checks if variant has any data
+    dumpCV - pull ClinVar data from the JSON data structure
+    Parameters: anno_mvi - dictionary of the JSON data on the variant
+    Return: list containing number of pathogenic, uncertain significance, and benign reports
+    """
+    #0 - pathogenic, 1 - uncertain significance, 2 - benign
+    num_report = [0, 0, 0]
+    chk_flag = False
+
+    #Check if there's an annotation
+    if anno_mvi is not None:
+        #Check if 'clinvar' exists
+        if 'clinvar' in anno_mvi:
+            #Check if 'rcv' exists
+            if 'rcv' in anno_mvi['clinvar']:
+                num_rcv = len(anno_mvi['clinvar']['rcv'])
+                #Number of RCV entries affects parsing of the json data
+                if num_rcv > 1:
+                    for rcv in anno_mvi['clinvar']['rcv']:
+                        if (rcv['clinical_significance'] == 'Pathogenic'
+                            or rcv['clinical_significance'] == 'Likely pathogenic'
+                            or rcv['clinical_significance'] == 'Pathogenic/Likely pathogenic'):
+                            num_report[0] = num_report[0] + 1
+                        elif rcv['clinical_significance'] == 'Uncertain significance':
+                            num_report[1] = num_report[1] + 1
+                        elif (rcv['clinical_significance'] == 'Benign'
+                              or rcv['clinical_significance'] == 'Likely benign'
+                              or rcv['clinical_significance'] == 'Benign/likely benign'):
+                            num_report[2] = num_report[2] + 1
+                        else:
+                            chk_flag = True
+                if num_rcv <= 1:
+                    if (anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Pathogenic'
+                        or anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Likely pathogenic'
+                        or anno_mvi['clinvar']['rcv']['clinical_significance'] =='Pathogenic/Likely pathogenic'):
+                        num_report[0] = 1
+                    elif anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Uncertain significance':
+                        num_report[1] = 1
+                    elif (anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Benign'
+                          or anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Likely benign'
+                          or anno_mvi['clinvar']['rcv']['clinical_significance'] =='Benign/Likely benign'):
+                        num_report[2] = 1
+                    else:
+                        chk_flag = True
+
+                return num_report
+
+    else:
+        return None
+
+def dumpRSID(anno_mvi):
+    """
+    dumpRSID - pull the dbSNP RSID from the JSON data structure
+    Parameters: anno_mvi - dictionary/list of the JSON data on the variant
+    Return: the RSID
+    """
+    if anno_mvi is not None:
+        if 'dbsnp' in anno_mvi:
+            return anno_mvi['dbsnp']['rsid']
+    else:
+        return None
+
+def dumpvartype(idHGVS):
+    """
+    dumpvartype - determine the type of variant based on HGVS id
+    Parameters: idHGVS - the HGVS id of variant being considered
+    Return: vartype
+    """
+    vartype = ''
+    if '>' in idHGVS:
+        vartype = 'snv'
+    elif 'del' in idHGVS:
+        vartype = 'del'
+    elif 'ins' in idHGVS:
+        vartype = 'ins'
+    return vartype
+
+def dumpgnomADG(anno_mvi):
+    """
+    dumpgnomADG - pull the gnomAD allele frequency (inc. genome sequences) from the JSON data structure
+    Parameters: anno_mvi - dictionary/list of the JSON data on the variant
+    Return: genome allele frequency
+    """
+    if anno_mvi is not None:
+        if 'gnomad_genome' in anno_mvi:
+            if 'af' in anno_mvi['gnomad_genome']:
+                if 'af' in anno_mvi['gnomad_genome']['af']:
+                    return anno_mvi['gnomad_genome']['af']['af']
+    else:
+        return None
+
+def dumpgnomADE(anno_mvi):
+    """
+    dumpgnomADE - pull the gnomAD allele frequency (excl. genome sequences) from the JSON data structure
+    Parameters: anno_mvi - dictionary/list of the JSON data on the variant
+    Return: exome allele frequency
+    """
+    if anno_mvi is not None:
+        if 'gnomad_exome' in anno_mvi:
+            if 'af' in anno_mvi['gnomad_exome']:
+                if 'af' in anno_mvi['gnomad_exome']['af']:
+                    return anno_mvi['gnomad_exome']['af']['af']
+    else:
+        return None
+
+def dumpconsequence(anno_vep):
+    """
+    dumpconsequence - pull the most severe consequence from the JSON data structure
+    Parameters: anno_vep - dictionary/list of the JSON data on the variant
+    Return: most severe consequence
+    """
+
+    consequence = ""
+
+    if anno_vep is not None:
+        consequence = anno_vep['most_severe_consequence']
+    else:
+        consequence = None
+    return consequence
+
+def dumpensemblgeneid(anno_vep):
+    """
+    dumpensemblgeneid - pull the gene IDs from the JSON data structure
+    Parameters: anno_vep - dictionary/list of the JSON data on the variant
+    Return: list of gene IDs that the variant affects
+    """
+
+    geneids = []
+    i = 0
+    relevant_transcripts = dumprelevanttranscripts(anno_vep)
+
+    if relevant_transcripts != []:
+        for transcript in relevant_transcripts:
+            #Check if the gene_id is in the current list
+            names = {'gene_id': transcript['gene_id'],
+                    'gene_symbol': transcript['gene_symbol']
+                    }
+
+            if not(names in geneids):
+                geneids.append(names)
+    else:
+        geneids.append(None)
+
+    return geneids
+
+def dumprelevanttranscripts(anno_vep):
+    """
+    dumprelevanttranscripts - pull Ensembl transcript IDs
+    Parameters: anno_vep - dictionary/list of the JSON data on the variant
+    Return: list of relevant transcipts
+    """
+    #list_transcripts - holds all of the relevant transcripts
+    list_transcripts = []
+    nodataflag = True
+
+    #Check if the annotation exists
+    if anno_vep is not None:
+        #Check if 'transcript_consequences' exists
+        if 'transcript_consequences' in anno_vep:
+            nodataflag = False
+
+    #Do for each transcript
+    if nodataflag is False:
+        for transcript in anno_vep['transcript_consequences']:
+            relevantflag = False
+            #Do for each consequence term
+            for term in transcript['consequence_terms']:
+                if (term != 'intron_variant'
+                    and term != 'non_coding_transcript_exon_variant'
+                    and term != 'non_coding_transcript_variant'
+                    and term != 'upstream_gene_variant'
+                    and term != 'downstream_gene_variant'
+                    and term != 'synonymous_variant'
+                    and term != '5_prime_UTR_variant'
+                    and term != '3_prime_UTR_variant'):
+                    relevantflag = True
+
+            #Append to the list f relevant transcripts if it is relevant
+            if relevantflag is True:
+                list_transcripts.append(transcript)
+
+    return list_transcripts
+
+def combineanno(listmvi, listvep, listHGVS):
+    """
+    combineanno - combine annotations from myvariant.info and VEP
+    Parameters:
+    listmvi - list containing dictionaries of myvariant.info annotations
+    listvep - list containing dictionaries of VEP annotations
+    listHGVS - list containing HGVS IDs
+    Return: return combined annotation list
+    """
+    #listanno - holds list of combined annotations
+    listanno = []
+    i = 0
+
+    #Do for every variant in listHGVS
+    while i < len(listHGVS):
+        #True if there's data
+        anno_mvi_flag = False
+        anno_vep_flag = False
+
+        #Check if there's data
+        if listmvi[i] is not None:
+            anno_mvi_flag = True
+        if listvep[i] is not None:
+            anno_vep_flag = True
+
+        #Progress tracker
+        if i%100 == 0:
+            print(str(i) + ' out of ' + str(len(listHGVS)) + ' completed..')
+
+        #Combine annotations
+        listanno.append(dict({'_id':listHGVS[i],
+                        'rsid':dumpRSID(listmvi[i]),
+                        'vartype':dumpvartype(listHGVS[i]),
+                        'gnomADG':dumpgnomADG(listmvi[i]),
+                        'gnomADE':dumpgnomADE(listmvi[i]),
+                        'ClinVar':dumpCV(listmvi[i]),
+                        'MScon':dumpconsequence(listvep[i]),
+                        'genelist':dumpensemblgeneid(listvep[i]),
+                        'relevanttranscripts':dumprelevanttranscripts(listvep[i])
+                        }))
+        i = i + 1
+
+    return listanno
+##### Processing Functions #####################################################
+def filteraffected(listaffected, listcontrol):
+    """
+    filteraffected - filters from lists of HGVS IDs of affected and control
+                     individuals
+    Parameters:
+    listaffected - list - contains the list of HGVS ids of affected individuals
+    listcontrol - list - contains the list of HGVS ids of unaffected individuals
+    Returns: list containing candidate mutations only
+    """
+    i = 0
+    listfiltered = []
+
+    print('Filtering starting...')
+
+    while i < len(listaffected[0]):
+        candidate = True
+
+        #Check if HGVS is in all listAffected. If not, set candidate to false
+        for a in listaffected:
+            if (listaffected[0][i] in a) == False:
+                candidate = False
+
+        #Check if HGVS is in listControl. If yes, set candidate to False
+        for c in listcontrol:
+            if listaffected[0][i] in c:
+                candidate = False
+
+        #Write to file
+        if candidate == True:
+            listfiltered.append(listaffected[0][i].strip('\n'))
+
+        if i%1000 == 0:
+            print(str(i) + '/' + str(len(listaffected[0])) + ' completed...')
+
+        i = i + 1
+
+    print('Filtering completed.')
+    return listfiltered
+
+def checknodata(anno):
+    """
+    checknodata - checks if variant has any data
     Parameters: data - variant and its associated annotations
     Returns: True or False
     """
     nodataflag = False
-    if data['MScon'] == 'N/A':
+    if anno['MScon'] == 'N/A':
         nodataflag = True
 
     return nodataflag
 
-def filterfreq(data):
+def checkfreq(anno):
     """
-    filterfreq - checks if variant above the frequency cut off
+    checkfreq - checks if variant above the frequency cut off
     Parameters: data - variant and its associated annotations
     Returns: True or False
     """
 
     overfreqpcflag = False
-    if (data['gnomADG'] != 'N/A') and (data['gnomADG'] != 'None') and (data['gnomADG'] != None):
-        if data['gnomADG'] >= 0.001:
+    if (anno['gnomADG'] != 'N/A') and (anno['gnomADG'] is not None):
+        if anno['gnomADG'] >= 0.001:
             overfreqpcflag = True
-    if (data['gnomADE'] != 'N/A') and (data['gnomADE'] != 'None' and (data['gnomADE'] != None)):
-        if data['gnomADE'] >= 0.001:
+    if (anno['gnomADE'] != 'N/A') and (anno['gnomADE'] != None):
+        if anno['gnomADE'] >= 0.001:
             overfreqpcflag = True
 
     return overfreqpcflag
 
-def filtercons(data):
+def checkcons(anno):
     """
-    filtercons - checks if the variant is relevant
+    checkcons - checks if the variant is relevant
     Parameters: data - variant and its associated annotations
     Returns: True or False
     """
     nonrelevantflag = False
 
-    if (data['MScon'] == 'intron_variant'
-        or data['MScon'] == 'non_coding_transcript_exon_variant'
-        or data['MScon'] == 'upstream_gene_variant'
-        or data['MScon'] == 'downstream_gene_variant'
-        or data['MScon'] == 'synonymous_variant'
-        or data['MScon'] == '5_prime_UTR_variant'
-        or data['MScon'] == '3_prime_UTR_variant'
-        or data['MScon'] == 'intergenic_variant'):
+    if (anno['MScon'] == 'intron_variant'
+        or anno['MScon'] == 'non_coding_transcript_exon_variant'
+        or anno['MScon'] == 'upstream_gene_variant'
+        or anno['MScon'] == 'downstream_gene_variant'
+        or anno['MScon'] == 'synonymous_variant'
+        or anno['MScon'] == '5_prime_UTR_variant'
+        or anno['MScon'] == '3_prime_UTR_variant'
+        or anno['MScon'] == 'intergenic_variant'):
         nonrelevantflag = True
 
     return nonrelevantflag
-
-def filtervariant(listanno, name = ""):
-    """
-    filtervariant - filters variants based on selected criteria
-    Parameters: listanno - list of the annotated variants
-    Returns: returns the filtered list of annotated variants
-    """
-    start = time.time()
-
-    nodata = []
-    nonrelevant = []
-    overfreqpc = []
-    filterstep3 = []
-
-    notbrainexpress = []
-    expressiondata = []
-
-    candidate = []
-    now = datetime.datetime.now()
-
-    if name == "":
-        name = now.strftime('%y%m%d-%H%M%S')
-
-    for data in listanno:
-        #Filter flags
-        nodataflag = filternodata(data)
-        nonrelevantflag = filtercons(data)
-        overfreqpcflag = filterfreq(data)
-
-        #Append data depending on which flags were triggered. If none were triggered
-        #then append to candidate list
-        if nodataflag == True:
-            nodata.append(data)
-        elif nonrelevantflag == True:
-            nonrelevant.append(data)
-        elif overfreqpcflag == True:
-            overfreqpc.append(data)
-        else:
-            filterstep3.append(data)
-        if listanno.index(data)%1000 == 0:
-            print (str(listanno.index(data)) + ' out of ' + str(len(listanno)) + ' filtered...')
-
-    #HPA annotation
-    for data in filterstep3:
-
-        print(str(filterstep3.index(data)))
-        print(data['_id'])
-
-        variantexpression = []
-        numnotdetected = 0
-        notbrainexpressflag = False
-
-        if data['genelist'][0] != 'N/A':
-            x = annothpa(data)
-            for gene in x:
-                if gene['RNA brain regional distribution'] == 'Not detected':
-                    #notbrainexpressflag = True
-                    numnotdetected = numnotdetected + 1
-                variantexpression.append(dict({
-                                            'gene':gene['Gene'],
-                                            'RNAbrd':gene['RNA brain regional distribution']
-                }))
-            if numnotdetected == len(data['genelist']):
-                notbrainexpressflag = True
-        if data['genelist'][0] == 'N/A':
-            x = None
-            variantexpression.append(None)
-        expressiondata.append(x)
-
-        data['brain_expression'] = variantexpression
-
-        if notbrainexpressflag == True:
-            notbrainexpress.append(data)
-        else:
-            candidate.append(data)
-
-    exportanno(expressiondata, 'expressiondata.txt')
-
-    #Write to files
-    writeanno(nodata, 'nodata_'+ name + '.txt')
-    writeanno(nonrelevant, 'nonrelevant_' + name + '.txt')
-    writeanno(overfreqpc, 'overfreqpc_' + name + '.txt')
-
-    #Output not brainexpress:
-    outputfilenbe = open('notbrainexpress_' + name + '.txt', 'w')
-    #Write header
-    outputfilenbe.write('HGVS' + '\t'
-                     + 'RSID' + '\t'
-                     + 'VarType' + '\t'
-                     + 'gnomADG' + '\t'
-                     + 'gnomADE' + '\t'
-                     + 'ClinVar' + '\t'
-                     + 'MSCon' + '\t'
-                     + 'GeneList' + '\t'
-                     + 'BrainExpression' + '\n')
-    #Write data
-    for data in notbrainexpress:
-        outputfilenbe.write(data['_id'] + '\t'
-                         + data['rsid'] + '\t'
-                         + data['vartype'] + '\t'
-                         + str(data['gnomADG']) + '\t'
-                         + str(data['gnomADE']) + '\t'
-                         + str(data['ClinVar']) + '\t'
-                         + data['MScon'] + '\t'
-                         + json.dumps(data['genelist']) + '\t'
-                         + json.dumps(data['brain_expression']) + '\n'
-                         )
-    outputfilenbe.close()
-
-    #Output candidate:
-    outputfilec = open('candidates_' + name + '.txt', 'w')
-    #Write header
-    outputfilec.write('HGVS' + '\t'
-                     + 'RSID' + '\t'
-                     + 'VarType' + '\t'
-                     + 'gnomADG' + '\t'
-                     + 'gnomADE' + '\t'
-                     + 'ClinVar' + '\t'
-                     + 'MSCon' + '\t'
-                     + 'GeneList' + '\t'
-                     + 'BrainExpression' + '\n')
-    #Write data
-    for data in candidate:
-        outputfilec.write(data['_id'] + '\t'
-                         + data['rsid'] + '\t'
-                         + data['vartype'] + '\t'
-                         + str(data['gnomADG']) + '\t'
-                         + str(data['gnomADE']) + '\t'
-                         + str(data['ClinVar']) + '\t'
-                         + data['MScon'] + '\t'
-                         + json.dumps(data['genelist']) + '\t'
-                         + json.dumps(data['brain_expression']) + '\n'
-                         )
-    outputfilenbe.close()
-
-    end = time.time()
-    print('Processing time: ' + str(end - start))
-
-    #Summary report
-    identifier = input('Please enter a Job ID (description): ')
-    outputsummary = open('summary_' + name + '.txt', 'w')
-    outputsummary.write('Summary report of analysis'
-                        + '\n'
-                        + 'ID: '
-                        + identifier
-                        + '\n'
-                        + 'Date performed: '
-                        + name
-                        + '\n'
-                        + 'Total number of samples: '
-                        + str(len(listanno))
-                        + '\n'
-                        + '# No Data: '
-                        + str(len(nodata))
-                        + '\n'
-                        + '# Non-relevant: '
-                        + str(len(nonrelevant))
-                        + '\n'
-                        + '# Greater than 0.1% AF: '
-                        + str(len(overfreqpc))
-                        + '\n'
-                        + '# Not expressed in brain: '
-                        + str(len(notbrainexpress))
-                        + '\n'
-                        + '# Candidates: '
-                        + str(len(candidate))
-                        + '\n'
-                        + 'Processing time: '
-                        + str (end - start)
-                        + ' seconds'
-                        )
-
-    return candidate
-
-def importmut():
-    """
-    importmut - reads file containing annotations generated by this program to repopulate the data structure
-    Parameters: none
-    Returns: a list of dictionaries containing all of the annotation data
-    """
-    listanno = []
-    inputfileopen = False
-
-    while inputfileopen == False:
-        try:
-            filename = input ('Please enter the name of the file containing the annotated mutations: ')
-            inputfile = open(filename, 'r')
-            inputfileopen = True
-        except IOError:
-            print ('File not found.')
-
-    #Skip header
-    next(inputfile)
-
-    for line in inputfile:
-        data = line.split('\t')
-
-        #Check all of the data
-        #Convert the allele frequencies back to floats
-        if (data[3] != 'N/A') and (data[3] != 'None'):
-            data[3] = float(data[3])
-        if (data[4] != 'N/A') and (data[4] != 'None'):
-            data[4] = float(data[4])
-        #Convert the genelist back into a list object from str
-        data[7] = json.loads(data[7].strip('\n'))
-        #Import the line
-        listanno.append(dict({'_id':data[0],
-                           'rsid':data[1],
-                           'vartype':data[2],
-                           'gnomADG':data[3],
-                           'gnomADE':data[4],
-                           'ClinVar':data[5],
-                           'MScon':data[6],
-                           'genelist':data[7]
-                           }))
-
-    inputfile.close()
-
-    print('Import completed.')
-
-    return listanno
-
-def combineanno(listmvi, listvep):
-    """
-
-    combineanno - combines annotations from MVI and VEP together into one list of dictionaries
-    Parameters:
-    listmvi - list - contains a list of dictionaries of MVI information
-    listvep - list - contains a list of dictionaries of VEP information
-    Returns: a list containing both sets of information
-
-    """
-    al = []
-    lc = importfHGVS()
-    i = 0
-
-    while i < len(lc):
-        if i%100 == 0:
-            print(str(i) + ' out of ' + str(len(lc)) + ' completed..')
-        if str(type(listmvi[i])) != "<class 'NoneType'>":
-            al.append(dict({'_id':listmvi[i]['_id'],
-                            'rsid':dumpRSID(listmvi[i]),
-                            'vartype':dumpvartype(listmvi[i]),
-                            'gnomADG':dumpgnomADG(listmvi[i]),
-                            'gnomADE':dumpgnomADE(listmvi[i]),
-                            'ClinVar':dumpCV(listmvi[i]),
-                            'MScon':dumpconsequence(listvep[i]),
-                            'genelist':dumpensemblgeneid(listvep[i])
-                            }))
-
-        if str(type(listmvi[i])) == "<class 'NoneType'>":
-            al.append(dict({'_id':lc[i],
-                            'rsid':'N/A',
-                            'vartype':'N/A',
-                            'gnomADG':'N/A',
-                            'gnomADE':'N/A',
-                            'ClinVar':'N/A',
-                            'MScon':dumpconsequence(listvep[i]),
-                            'genelist':dumpensemblgeneid(listvep[i])
-                            }))
-
-        i = i + 1
-
-    return al
-
-def writeanno(listanno, name = "annotated_mutations.txt"):
-    """
-    writeanno - export annotations to file, tab delimited.
-    Parameters:
-    listanno - list - contains all of the information to be exported
-    Return: none; outputs to a file named annotated_mutations.txt
-    """
-    print('Writing to file...')
-
-    outputfile = open(name, 'w')
-
-    #Output:
-    #Write header
-    outputfile.write('HGVS' + '\t'
-                     + 'RSID' + '\t'
-                     + 'VarType' + '\t'
-                     + 'gnomADG' + '\t'
-                     + 'gnomADE' + '\t'
-                     + 'ClinVar' + '\t'
-                     + 'MSCon' + '\t'
-                     + 'GeneList' + '\n')
-
-    #Write data
-    for i in listanno:
-
-        outputfile.write(i['_id'] + '\t'
-                         + i['rsid'] + '\t'
-                         + i['vartype'] + '\t'
-                         + str(i['gnomADG']) + '\t'
-                         + str(i['gnomADE']) + '\t'
-                         + str(i['ClinVar']) + '\t'
-                         + i['MScon'] + '\t'
-                         + json.dumps(i['genelist'])
-                         )
-
-        if listanno.index(i) != (len(listanno)-1):
-            outputfile.write('\n')
-
-        #Progress Indicator
-        if listanno.index(i)%1000 == 0:
-            print (str(listanno.index(i)) + ' out of ' + str(len(listanno)) + ' written...')
-
-    print('Annotations written to file')
-
-    outputfile.close()
-
-def exportanno(listanno, filename):
-    """
-    exportanno - exports raw annotation data
-    Parameters:
-    listanno - list - list of dictionaries containing raw JSON data
-    filename - string - name of the file to output to
-    Returns: none; outputs to file with filename
-    """
-    outputfile = open(filename, 'w')
-    for y in listanno:
-        outputfile.write(json.dumps(y))
-        if listanno.index(y) != (len(listanno)-1):
-            outputfile.write('\n')
-    outputfile.close()
-
-def retrievevep(lc, listvep):
-    al = []
-    i = 0
-    vi = 0
-
-    while i < len(lc):
-        found = False
-
-        if i%10 == 0:
-            print(str(i) + ' out of ' + str(len(lc)) + ' completed....')
-
-        while (found == False) and vi < len(listvep):
-            if lc[i]['_id'] == listvep[vi]['id']:
-                found = True
-                al.append(listvep[vi])
-            vi = vi + 1
-
-        if vi > len(listvep):
-            if i < len(listvep):
-               vi = i
-            else:
-               vi = 19000
-
-        i = i + 1
-
-    print('Samples completed.')
-    return al
-
-def transcriptids(listanno):
-    listall = []
-    listrelevant = []
-
-    for variant in listanno:
-        #Lists of transcripts for the variants
-        list_relevant_transcript = []
-        list_transcript = []
-
-        print ('Sample ' + str(listanno.index(variant)))
-        #Check if data has been pulled
-        if 'transcript_consequences' in variant:
-            #Go through each transcript
-            for transcript in variant['transcript_consequences']:
-                #Flag for relevance
-                append_relevant = False
-                #Go through each consequence term
-                for terms in transcript['consequence_terms']:
-                    #Check if term is relevant
-                    if (terms != 'intron_variant'
-                        and terms != 'non_coding_transcript_exon_variant'
-                        and terms != 'upstream_gene_variant'
-                        and terms != 'downstream_gene_variant'
-                        and terms != 'synonymous_variant'
-                        and terms != '5_prime_UTR_variant'
-                        and terms != '3_prime_UTR_variant'
-                        and terms != 'intergenic_variant'
-                        and terms != 'non_coding_transcript_variant'):
-
-                        append_relevant = True
-
-                #Final check if the protein is coding
-                if (transcript['biotype']) != 'protein_coding':
-                    append_relevant = False
-
-                #Verify information is present
-                protein_start = 'None'
-                protein_end = 'None'
-                amino_acids = 'None'
-
-                if 'protein_start' in transcript:
-                    protein_start = transcript['protein_start']
-                if 'protein_end' in transcript:
-                    protein_end = transcript['protein_end']
-                if 'amino_acids' in transcript:
-                    amino_acids = transcript['amino_acids']
-
-                #Relevant
-                if append_relevant == True:
-                    list_relevant_transcript.append(dict({'transcript_id':transcript['transcript_id'],
-                                                         'consequence_terms':transcript['consequence_terms'],
-                                                         'biotype':transcript['biotype'],
-                                                         'protein_start':protein_start,
-                                                         'protein_end':protein_end,
-                                                         'amino_acids':amino_acids
-                                                         }))
-                list_transcript.append(dict({'transcript_id':transcript['transcript_id'],
-                                            'consequence_terms':transcript['consequence_terms'],
-                                            'biotype':transcript['biotype'],
-                                            'protein_start':protein_start,
-                                            'protein_end':protein_end,
-                                            'amino_acids':amino_acids
-                                            }))
-
-        else:
-            list_relevant_transcript.append('None')
-            list_transcript.append('None')
-
-        listall.append(dict({'id':variant['id'],
-                             'transcripts':list_transcript,
-                             }))
-        listrelevant.append(dict({'id':variant['id'],
-                                  'transcripts':list_relevant_transcript,
-                                  }))
-
-    exportanno(listall, 'variants_all_transcripts.txt')
-    exportanno(listrelevant, 'variants_relevant_transcript.txt')
-
-def vcftoHGVS():
-    """
-    vcftoHGVS - calls the myvariant.info get_hgvs_from_vcf function
-    Parameters: None
-    Returns: none; outputs a file containing all of the HGVS IDs
-    """
-    HGVS = []
-    filename = input('Please enter filename : ')
-    HGVS = list(myvariant.get_hgvs_from_vcf(filename))
-
-    index = 0
-
-    #Accept name input from user
-    name = input('Please enter an identifier for your file: ')
-    outputfile = open('HGVS_' + name + '.txt', 'w')
-
-    print('Writing to file...')
-    #Write to file
-    for ids in HGVS:
-        outputfile.write(ids + '\n')
-    print('Done.')
-
-    outputfile.close()
