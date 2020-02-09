@@ -41,7 +41,7 @@ def importanno(filename):
     """
     importanno - from a file containing json.dumps annotation data, import it as
     a list of dictionaries
-    Parameters: none
+    Parameters: filename - name of file to open
     Return: a list of dictionaries of annotation data
     """
 
@@ -179,9 +179,11 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
         genelist = []
         relevanttranscripts = []
 
+        #For genelist
         if listanno[i]['genelist'][0] is not None:
             for gene in listanno[i]['genelist']:
                  genelist.append(gene['gene_symbol'])
+        #For relevanttranscripts
         if listanno[i]['relevanttranscripts'] is not None:
             for transcript in listanno[i]['relevanttranscripts']:
                 relevanttranscripts.append(transcript['transcript_id'])
@@ -194,8 +196,14 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                          + str(listanno[i]['ClinVar']) + '\t'
                          + str(listanno[i]['MScon']) + '\t'
                          + str(genelist) + '\t'
-                         + str(relevanttranscripts) + '\n'
+                         + str(relevanttranscripts) + '\t'
                          )
+
+        if 'brain_expression' in listanno[i]:
+            if listanno[i]['brain_expression'] is not None:
+                outputfile.write(str(listanno[i]['brain_expression']))
+
+        outputfile.write('\n')
 
         #Progress Indicator
         if i%1000 == 0:
@@ -221,8 +229,12 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
                      + str(listanno[i]['ClinVar']) + '\t'
                      + str(listanno[i]['MScon']) + '\t'
                      + str(last_genelist) + '\t'
-                     + str(last_relevanttranscripts)
+                     + str(last_relevanttranscripts) + '\t'
                      )
+
+    if 'brain_expression' in listanno[i]:
+        if listanno[i]['brain_expression'] is not None:
+            outputfile.write(str(listanno[i]['brain_expression']))
 
     print('Annotations written to file')
 
@@ -366,40 +378,11 @@ def annothpa(data):
 
     return expression
 
-def annothpa2(listanno):
-    """
-    annothpa - pulls expression data from the Human Protein Atlas
-    Parameters: listanno - combined MVI and VEP annotations list
-    Returns: listanno but with expression data appended
-    """
-    listhpa = []
-    server = "http://www.proteinatlas.org/"
-
-    #Do for every variant in listanno
-    for anno in listanno:
-        #anno_hpa - temporarily holds the data from the Human Protein Atlas
-        anno_hpa = []
-        data_expression = []
-        #Get HPA annotation for every relevant gene that the variant affects
-        for gene in anno['genelist']:
-            r = requests.get(server + data['genelist'][i]['gene_id'] + '.json')
-            #Check if there was data returned, then add to anno_hpa
-            if r.status_code == requests.codes.ok:
-                anno_hpa.append(r.json())
-        #Loop through each gene that had annotations pulled
-        for gene in anno_hpa:
-                data_expression.append(dict({
-                                            'gene':gene['Gene'],
-                                            'RNAbrd':gene['RNA brain regional distribution']
-                }))
-        #Add to original annotation structure
-        anno['brain_expression'] = data_expression
-
 ##### Parsing Functions ########################################################
 def dumpCV(anno_mvi):
     """
     dumpCV - pull ClinVar data from the JSON data structure
-    Parameters: data - dictionary of the JSON data on the variant
+    Parameters: anno_mvi - dictionary of the JSON data on the variant
     Return: list containing number of pathogenic, uncertain significance, and benign reports
     """
     #0 - pathogenic, 1 - uncertain significance, 2 - benign
@@ -450,7 +433,7 @@ def dumpCV(anno_mvi):
 def dumpRSID(anno_mvi):
     """
     dumpRSID - pull the dbSNP RSID from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
+    Parameters: anno_mvi - dictionary/list of the JSON data on the variant
     Return: the RSID
     """
     if anno_mvi is not None:
@@ -477,7 +460,7 @@ def dumpvartype(idHGVS):
 def dumpgnomADG(anno_mvi):
     """
     dumpgnomADG - pull the gnomAD allele frequency (inc. genome sequences) from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
+    Parameters: anno_mvi - dictionary/list of the JSON data on the variant
     Return: genome allele frequency
     """
     if anno_mvi is not None:
@@ -491,7 +474,7 @@ def dumpgnomADG(anno_mvi):
 def dumpgnomADE(anno_mvi):
     """
     dumpgnomADE - pull the gnomAD allele frequency (excl. genome sequences) from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
+    Parameters: anno_mvi - dictionary/list of the JSON data on the variant
     Return: exome allele frequency
     """
     if anno_mvi is not None:
@@ -505,7 +488,7 @@ def dumpgnomADE(anno_mvi):
 def dumpconsequence(anno_vep):
     """
     dumpconsequence - pull the most severe consequence from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
+    Parameters: anno_vep - dictionary/list of the JSON data on the variant
     Return: most severe consequence
     """
 
@@ -520,7 +503,7 @@ def dumpconsequence(anno_vep):
 def dumpensemblgeneid(anno_vep):
     """
     dumpensemblgeneid - pull the gene IDs from the JSON data structure
-    Parameters: data - dictionary/list of the JSON data on the variant
+    Parameters: anno_vep - dictionary/list of the JSON data on the variant
     Return: list of gene IDs that the variant affects
     """
 
@@ -543,6 +526,11 @@ def dumpensemblgeneid(anno_vep):
     return geneids
 
 def dumprelevanttranscripts(anno_vep):
+    """
+    dumprelevanttranscripts - pull Ensembl transcript IDs
+    Parameters: anno_vep - dictionary/list of the JSON data on the variant
+    Return: list of relevant transcipts
+    """
     #list_transcripts - holds all of the relevant transcripts
     list_transcripts = []
     nodataflag = True
@@ -576,6 +564,14 @@ def dumprelevanttranscripts(anno_vep):
     return list_transcripts
 
 def combineanno(listmvi, listvep, listHGVS):
+    """
+    combineanno - combine annotations from myvariant.info and VEP
+    Parameters:
+    listmvi - list containing dictionaries of myvariant.info annotations
+    listvep - list containing dictionaries of VEP annotations
+    listHGVS - list containing HGVS IDs
+    Return: return combined annotation list
+    """
     #listanno - holds list of combined annotations
     listanno = []
     i = 0
@@ -664,7 +660,7 @@ def checknodata(anno):
 
 def checkfreq(anno):
     """
-    filterfreq - checks if variant above the frequency cut off
+    checkfreq - checks if variant above the frequency cut off
     Parameters: data - variant and its associated annotations
     Returns: True or False
     """
@@ -681,7 +677,7 @@ def checkfreq(anno):
 
 def checkcons(anno):
     """
-    filtercons - checks if the variant is relevant
+    checkcons - checks if the variant is relevant
     Parameters: data - variant and its associated annotations
     Returns: True or False
     """
@@ -698,177 +694,3 @@ def checkcons(anno):
         nonrelevantflag = True
 
     return nonrelevantflag
-
-##### Move to VariantAnnotation.py #############################################
-def filtervariant(listanno, name = ""):
-    """
-    filtervariant - filters variants based on selected criteria
-    Parameters: listanno - list of the annotated variants
-    Returns: returns the filtered list of annotated variants
-    """
-    start = time.time()
-
-    nodata = []
-    nonrelevant = []
-    overfreqpc = []
-    filterstep3 = []
-
-    notbrainexpress = []
-    expressiondata = []
-
-    candidate = []
-    now = datetime.datetime.now()
-
-    if name == "":
-        name = now.strftime('%y%m%d-%H%M%S')
-
-    for data in listanno:
-        #Filter flags
-        nodataflag = filternodata(data)
-        nonrelevantflag = filtercons(data)
-        overfreqpcflag = filterfreq(data)
-
-        #Append data depending on which flags were triggered. If none were triggered
-        #then append to candidate list
-        if nodataflag == True:
-            nodata.append(data)
-        elif nonrelevantflag == True:
-            nonrelevant.append(data)
-        elif overfreqpcflag == True:
-            overfreqpc.append(data)
-        else:
-            filterstep3.append(data)
-        if listanno.index(data)%1000 == 0:
-            print (str(listanno.index(data)) + ' out of ' + str(len(listanno)) + ' filtered...')
-
-    #HPA annotation
-    for data in filterstep3:
-
-        print(str(filterstep3.index(data)))
-        print(data['_id'])
-
-        variantexpression = []
-        numnotdetected = 0
-        notbrainexpressflag = False
-
-        if data['genelist'][0] != 'N/A':
-            x = annothpa(data)
-            for gene in x:
-                if gene['RNA brain regional distribution'] == 'Not detected':
-                    #notbrainexpressflag = True
-                    numnotdetected = numnotdetected + 1
-                variantexpression.append(dict({
-                                            'gene':gene['Gene'],
-                                            'RNAbrd':gene['RNA brain regional distribution']
-                }))
-            if numnotdetected == len(data['genelist']):
-                notbrainexpressflag = True
-        if data['genelist'][0] == 'N/A':
-            x = None
-            variantexpression.append(None)
-        expressiondata.append(x)
-
-        data['brain_expression'] = variantexpression
-
-        if notbrainexpressflag == True:
-            notbrainexpress.append(data)
-        else:
-            candidate.append(data)
-
-    exportanno(expressiondata, 'expressiondata.txt')
-
-    #Write to files
-    writeanno(nodata, 'nodata_'+ name + '.txt')
-    writeanno(nonrelevant, 'nonrelevant_' + name + '.txt')
-    writeanno(overfreqpc, 'overfreqpc_' + name + '.txt')
-
-    #Output not brainexpress:
-    outputfilenbe = open('notbrainexpress_' + name + '.txt', 'w')
-    #Write header
-    outputfilenbe.write('HGVS' + '\t'
-                     + 'RSID' + '\t'
-                     + 'VarType' + '\t'
-                     + 'gnomADG' + '\t'
-                     + 'gnomADE' + '\t'
-                     + 'ClinVar' + '\t'
-                     + 'MSCon' + '\t'
-                     + 'GeneList' + '\t'
-                     + 'BrainExpression' + '\n')
-    #Write data
-    for data in notbrainexpress:
-        outputfilenbe.write(data['_id'] + '\t'
-                         + data['rsid'] + '\t'
-                         + data['vartype'] + '\t'
-                         + str(data['gnomADG']) + '\t'
-                         + str(data['gnomADE']) + '\t'
-                         + str(data['ClinVar']) + '\t'
-                         + data['MScon'] + '\t'
-                         + json.dumps(data['genelist']) + '\t'
-                         + json.dumps(data['brain_expression']) + '\n'
-                         )
-    outputfilenbe.close()
-
-    #Output candidate:
-    outputfilec = open('candidates_' + name + '.txt', 'w')
-    #Write header
-    outputfilec.write('HGVS' + '\t'
-                     + 'RSID' + '\t'
-                     + 'VarType' + '\t'
-                     + 'gnomADG' + '\t'
-                     + 'gnomADE' + '\t'
-                     + 'ClinVar' + '\t'
-                     + 'MSCon' + '\t'
-                     + 'GeneList' + '\t'
-                     + 'BrainExpression' + '\n')
-    #Write data
-    for data in candidate:
-        outputfilec.write(data['_id'] + '\t'
-                         + data['rsid'] + '\t'
-                         + data['vartype'] + '\t'
-                         + str(data['gnomADG']) + '\t'
-                         + str(data['gnomADE']) + '\t'
-                         + str(data['ClinVar']) + '\t'
-                         + data['MScon'] + '\t'
-                         + json.dumps(data['genelist']) + '\t'
-                         + json.dumps(data['brain_expression']) + '\n'
-                         )
-    outputfilenbe.close()
-
-    end = time.time()
-    print('Processing time: ' + str(end - start))
-
-    #Summary report
-    identifier = input('Please enter a Job ID (description): ')
-    outputsummary = open('summary_' + name + '.txt', 'w')
-    outputsummary.write('Summary report of analysis'
-                        + '\n'
-                        + 'ID: '
-                        + identifier
-                        + '\n'
-                        + 'Date performed: '
-                        + name
-                        + '\n'
-                        + 'Total number of samples: '
-                        + str(len(listanno))
-                        + '\n'
-                        + '# No Data: '
-                        + str(len(nodata))
-                        + '\n'
-                        + '# Non-relevant: '
-                        + str(len(nonrelevant))
-                        + '\n'
-                        + '# Greater than 0.1% AF: '
-                        + str(len(overfreqpc))
-                        + '\n'
-                        + '# Not expressed in brain: '
-                        + str(len(notbrainexpress))
-                        + '\n'
-                        + '# Candidates: '
-                        + str(len(candidate))
-                        + '\n'
-                        + 'Processing time: '
-                        + str (end - start)
-                        + ' seconds'
-                        )
-
-    return candidate

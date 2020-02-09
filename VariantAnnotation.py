@@ -131,6 +131,7 @@ LIST_VEP = []
 LIST_MVI = []
 
 while EXIT_PROGRAM == False:
+    #Display menu
     print('1) Import HGVS from .vcf files')
     print('2) Generate filtered HGVS file')
     print('3) Annotation')
@@ -140,8 +141,9 @@ while EXIT_PROGRAM == False:
     print('7) Full Routine')
     print('8) Exit (modules still loaded)')
 
+    #Accept input from user
     option = int(input('Select option: '))
-
+    #Input check
     while (option != 1
            and option != 2
            and option != 3
@@ -152,8 +154,8 @@ while EXIT_PROGRAM == False:
            and option != 8
            ):
         option = int(input('Invalid selection; please select one of the options: '))
-
     print('')
+
     #1) Import HGVS from .vcf files
     if option == 1:
 
@@ -319,6 +321,7 @@ while EXIT_PROGRAM == False:
                 print('')
 
     elif option == 6:
+        #Lists
         list_nodata = []
         list_irrelevant = []
         list_highfreq = []
@@ -326,19 +329,66 @@ while EXIT_PROGRAM == False:
         list_candidate = []
         list_intermediate = []
 
+        file_ID = input('Enter a job ID: ')
+
         #Conduct filtering
+        #No data
+        print('Filtering out no data...')
         list_nodata, list_intermediate = filternodata(LIST_ANNO)
+        print('No data variants filtered out.')
+        #Consequence filter
+        print('Filtering out irrelevant variants...')
         list_irrelevant, list_intermediate = filtercons(list_intermediate)
+        print('Irrelevant variants filtered out.')
+        #Frequency filter
+        print('Filtering out high frequency variants...')
         list_highfreq, list_intermediate = filterfreq(list_intermediate)
+        print('High frequency variants filtered out.')
+        #Expression filter
+        print('Filtering out variants not expressed in the brain...')
         list_notexpressedbrain, list_candidate = filterexpression(list_intermediate)
+        print('Variants not expressed in brain filtered out.')
 
         #Export
-        va.exportanno(list_nodata, "Nodata.txt")
-        va.exportanno(list_irrelevant, "nonrelevant.txt")
-        va.exportanno(list_highfreq, "overfreqpc.txt")
-        va.exportanno(list_notexpressedbrain, "notbrainexpress.txt")
-        va.exportanno(list_candidate, "candidate_variants.txt")
+        va.exportanno(list_nodata, 'nodata_' + str(file_ID) + '.txt')
+        va.exportanno(list_irrelevant, 'nonrelevant_' + str(file_ID) + '.txt')
+        va.exportanno(list_highfreq, 'overfreqpc_' + str(file_ID) + '.txt')
+        va.exportanno(list_notexpressedbrain, 'notbrainexpress_'+ str(file_ID)+ '.txt')
+        va.exportanno(list_candidate, 'candidate_variants_' + str(file_ID) + '.txt')
 
+        #Summary
+        now = datetime.datetime.now()
+        time = now.strftime('%y%m%d-%H%M%S')
+
+        summaryfile = open('summary_' + str(file_ID)+ '.txt', 'w')
+
+        summaryfile.write('Summary report of analysis'
+                        + '\n'
+                        + 'ID: '
+                        + file_ID
+                        + '\n'
+                        + 'Date performed: '
+                        + time
+                        + '\n'
+                        + 'Total number of samples: '
+                        + str(len(LIST_ANNO))
+                        + '\n'
+                        + '# No Data: '
+                        + str(len(list_nodata))
+                        + '\n'
+                        + '# Non-relevant: '
+                        + str(len(list_irrelevant))
+                        + '\n'
+                        + '# Greater than 0.1% AF: '
+                        + str(len(list_highfreq))
+                        + '\n'
+                        + '# Not expressed in brain: '
+                        + str(len(list_notexpressedbrain))
+                        + '\n'
+                        + '# Candidates: '
+                        + str(len(list_candidate))
+                        )
+        summaryfile.close()
     elif option == 7:
         fullroutine();
 
