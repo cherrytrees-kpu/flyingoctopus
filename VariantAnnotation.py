@@ -345,7 +345,7 @@ while EXIT_PROGRAM == False:
         while file_created is False:
             try:
                 file_ID = input('Enter a job ID: ')
-                newpath = basepath.joinpath(file_ID+time)
+                newpath = basepath.joinpath(file_ID+'_'+time)
                 newpath.mkdir()
                 file_created = True
             except FileExistsError as fee_error:
