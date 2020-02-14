@@ -343,14 +343,15 @@ while EXIT_PROGRAM == False:
         basepath = pathlib.Path.cwd()
         file_created = False
         while file_created is False:
+            file_ID = input('Enter a job ID: ')
+            newpath = basepath.joinpath(file_ID+'_'+time)
             try:
-                file_ID = input('Enter a job ID: ')
-                newpath = basepath.joinpath(file_ID+'_'+time)
                 newpath.mkdir()
-                file_created = True
             except FileExistsError as fee_error:
                 print(fee_error)
                 print('Please try another ID: ')
+            else:
+                file_created = True
 
         #Filenames
         filename_nodata = 'nodata_' + str(file_ID) + '_' + time + '.txt'
