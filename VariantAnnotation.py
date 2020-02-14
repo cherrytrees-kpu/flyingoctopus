@@ -6,6 +6,8 @@ Author: Michael Ke
 """
 import json
 import sys
+import pathlib
+import shutil
 import requests
 import myvariant
 import time
@@ -333,7 +335,31 @@ while EXIT_PROGRAM == False:
         list_candidate = []
         list_intermediate = []
 
-        file_ID = input('Enter a job ID: ')
+        #Job Identification
+        now = datetime.datetime.now()
+        time = now.strftime('%y%m%d-%H%M%S')
+
+        #File-handling variables
+        basepath = pathlib.Path.cwd()
+        file_created = False
+        while file_created is False:
+            file_ID = input('Enter a job ID: ')
+            newpath = basepath.joinpath(file_ID+'_'+time)
+            try:
+                newpath.mkdir()
+            except FileExistsError as fee_error:
+                print(fee_error)
+                print('Please try another ID: ')
+            else:
+                file_created = True
+
+        #Filenames
+        filename_nodata = 'nodata_' + str(file_ID) + '_' + time + '.txt'
+        filename_irrelevant = 'nonrelevant_' + str(file_ID) + '_' + time + '.txt'
+        filename_highfreq = 'overfreqpc_' + str(file_ID) + '_' + time + '.txt'
+        filename_notexpressedbrain = 'notbrainexpress_' + str(file_ID) + '_' + time + '.txt'
+        filename_candidate = 'candidatevariants_' + str(file_ID) + '_' + time + '.txt'
+        filename_summary = 'summary_' + str(file_ID) + '_' + time + '.txt'
 
         #Conduct filtering
         #No data
@@ -354,17 +380,14 @@ while EXIT_PROGRAM == False:
         print('Variants not expressed in brain filtered out.')
 
         #Export
-        va.exportanno(list_nodata, 'nodata_' + str(file_ID) + '.txt')
-        va.exportanno(list_irrelevant, 'nonrelevant_' + str(file_ID) + '.txt')
-        va.exportanno(list_highfreq, 'overfreqpc_' + str(file_ID) + '.txt')
-        va.exportanno(list_notexpressedbrain, 'notbrainexpress_'+ str(file_ID)+ '.txt')
-        va.exportanno(list_candidate, 'candidate_variants_' + str(file_ID) + '.txt')
+        va.exportanno(list_nodata, newpath.as_posix() + '/' + filename_nodata)
+        va.exportanno(list_irrelevant, newpath.as_posix() + '/' + filename_irrelevant)
+        va.exportanno(list_highfreq, newpath.as_posix() + '/' + filename_highfreq)
+        va.exportanno(list_notexpressedbrain, newpath.as_posix() + '/' + filename_notexpressedbrain)
+        va.exportanno(list_candidate, newpath.as_posix() + '/' + filename_candidate)
 
         #Summary
-        now = datetime.datetime.now()
-        time = now.strftime('%y%m%d-%H%M%S')
-
-        summaryfile = open('summary_' + str(file_ID)+ '.txt', 'w')
+        summaryfile = open(newpath.as_posix() + '/' + filename_summary, 'w')
 
         summaryfile.write('Summary report of analysis'
                         + '\n'
