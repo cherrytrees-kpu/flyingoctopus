@@ -92,6 +92,7 @@ def filterexpression(listanno):
     for anno in listanno:
         if anno['genelist'][0] is not None:
             anno_hpa = va.annothpa(anno)
+            list_hpa.append(anno_hpa)
             data_expression = []
             #Loop through each gene that had annotations pulled
             for gene in anno_hpa:
@@ -117,6 +118,9 @@ def filterexpression(listanno):
             list_notexpressedbrain.append(anno)
         else:
             list_candidate.append(anno)
+
+    #Export the raw annotations from Human Protein Atlas
+    va.exportanno(list_hpa, 'hpa_annotations.txt')
 
     return list_notexpressedbrain, list_candidate
 
