@@ -126,6 +126,38 @@ def filterexpression(listanno):
 
     return list_notexpressedbrain, list_candidate
 
+def getsequences(listanno, basepath):
+    for anno in listanno:
+        print(listanno.index(anno))
+        #Make a folder
+        newpath = basepath.joinpath(va.converthgvs(anno['_id']))
+        print(newpath)
+        newpath.mkdir(exist_ok=True)
+        #Do for every transcript
+        for transcript in anno['relevanttranscripts']:
+            print(transcript['transcript_id'])
+            cds = va.ensemblsequence(transcript['transcript_id'], 'cds')
+            cdna = va.ensemblsequence(transcript['transcript_id'], 'cdna')
+            #cds
+            if cds is not None:
+                cdsfile = open(newpath.as_posix()
+                                + '/'
+                                + transcript['transcript_id']
+                                + '_cds.txt',
+                                'w',)
+                cdsfile.write(cds)
+                cdsfile.close()
+
+            #cDNA
+            if cdna is not None:
+                cdnafile = open(newpath.as_posix()
+                                + '/'
+                                + transcript['transcript_id']
+                                + '_cdna.txt',
+                                'w',)
+                cdnafile.write(cdna)
+                cdnafile.close()
+
 ##### Program Start ##################################################################
 #GLOBAL VARIABLES
 EXIT_PROGRAM = False
@@ -135,6 +167,10 @@ LIST_ANNO = []
 LIST_VEP = []
 #LIST_MVI - holds myvariant.info annotations
 LIST_MVI = []
+#LIST_CANDIDATE = holds the candidate annotations
+LIST_CANDIDATE = []
+
+BASEPATH = pathlib.Path.cwd()
 
 while EXIT_PROGRAM == False:
     #Display menu
@@ -144,7 +180,7 @@ while EXIT_PROGRAM == False:
     print('4) Import data')
     print('5) Export data')
     print('6) Process data')
-    print('7) Full Routine')
+    print('7) Get Ensembl CDS sequences')
     print('8) Exit (modules still loaded)')
 
     #Accept input from user
@@ -379,6 +415,8 @@ while EXIT_PROGRAM == False:
         list_notexpressedbrain, list_candidate = filterexpression(list_intermediate)
         print('Variants not expressed in brain filtered out.')
 
+        LIST_CANDIDATE = list_candidate
+
         #Export
         va.exportanno(list_nodata, newpath.as_posix() + '/' + filename_nodata)
         va.exportanno(list_irrelevant, newpath.as_posix() + '/' + filename_irrelevant)
@@ -417,8 +455,11 @@ while EXIT_PROGRAM == False:
                         )
         summaryfile.close()
     elif option == 7:
-        fullroutine();
-
+        #Import annotations if not already in program:
+        if len(LIST_CANDIDATE) == 0:
+            filename = input('Please enter the name of the file being imported : ')
+            LIST_CANDIDATE = va.importanno(filename)
+        va.getsequences(LIST_CANDIDATE, BASEPATH)
     elif option == 8:
         check = input('Are you sure you want to exit? (y/n)')
         if check == 'y':
