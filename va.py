@@ -418,9 +418,7 @@ def dumpCV(anno_mvi):
         if 'clinvar' in anno_mvi:
             #Check if 'rcv' exists
             if 'rcv' in anno_mvi['clinvar']:
-                num_rcv = len(anno_mvi['clinvar']['rcv'])
-                #Number of RCV entries affects parsing of the json data
-                if num_rcv > 1:
+                if isinstance(anno_mvi['clinvar']['rcv'], list):
                     for rcv in anno_mvi['clinvar']['rcv']:
                         if (rcv['clinical_significance'] == 'Pathogenic'
                             or rcv['clinical_significance'] == 'Likely pathogenic'
@@ -434,7 +432,7 @@ def dumpCV(anno_mvi):
                             num_report[2] = num_report[2] + 1
                         else:
                             chk_flag = True
-                if num_rcv <= 1:
+                else:
                     if (anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Pathogenic'
                         or anno_mvi['clinvar']['rcv']['clinical_significance'] == 'Likely pathogenic'
                         or anno_mvi['clinvar']['rcv']['clinical_significance'] =='Pathogenic/Likely pathogenic'):
