@@ -577,7 +577,8 @@ def dumprelevanttranscripts(anno_vep):
                     and term != 'downstream_gene_variant'
                     and term != 'synonymous_variant'
                     and term != '5_prime_UTR_variant'
-                    and term != '3_prime_UTR_variant'):
+                    and term != '3_prime_UTR_variant'
+                    and term != 'NMD_transcript_variant'):
                     relevantflag = True
 
             #Append to the list f relevant transcripts if it is relevant
