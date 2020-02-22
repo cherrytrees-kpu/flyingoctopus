@@ -409,14 +409,62 @@ while EXIT_PROGRAM == False:
 
         LIST_CANDIDATE = list_candidate
 
-        #Export
+        #Export all of the files
         va.exportanno(list_nodata, newpath.as_posix() + '/' + filename_nodata)
         va.exportanno(list_irrelevant, newpath.as_posix() + '/' + filename_irrelevant)
         va.exportanno(list_highfreq, newpath.as_posix() + '/' + filename_highfreq)
         va.exportanno(list_notexpressedbrain, newpath.as_posix() + '/' + filename_notexpressedbrain)
         va.exportanno(list_candidate, newpath.as_posix() + '/' + filename_candidate)
 
-        #Summary
+        #Export by type of variant
+        list_snv = []
+        list_del = []
+        list_ins = []
+        list_delins = []
+        #Sort variants
+        for variant in list_candidate:
+            if variant['vartype'] == 'snv':
+                list_snv.append(variant)
+            elif variant['vartype'] == 'del':
+                list_del.append(variant)
+            elif variant['vartype'] == 'ins':
+                list_ins.append(variant)
+            elif variant['vartype'] == 'delins':
+                list_delins.append(variant)
+        va.exportanno(list_snv,
+                        newpath.as_posix()
+                        + '/candidate_snv_'
+                        + str(file_ID)
+                        + '_'
+                        + time
+                        + '.txt'
+                        )
+        va.exportanno(list_del,
+                        newpath.as_posix()
+                        + '/candidate_del_'
+                        + str(file_ID)
+                        + '_'
+                        + time
+                        + '.txt'
+                        )
+        va.exportanno(list_ins,
+                        newpath.as_posix()
+                        + '/candidate_ins_'
+                        + str(file_ID)
+                        + '_'
+                        + time
+                        + '.txt'
+                        )
+        va.exportanno(list_delins,
+                        newpath.as_posix()
+                        + '/candidate_delins_'
+                        + str(file_ID)
+                        + '_'
+                        + time
+                        + '.txt'
+                        )
+
+        #Summary file
         summaryfile = open(newpath.as_posix() + '/' + filename_summary, 'w')
 
         summaryfile.write('Summary report of analysis'
