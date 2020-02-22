@@ -361,31 +361,23 @@ def annotvep(listHGVS):
 
     return listvep
 
-def annothpa(data):
+def annothpa(geneid):
     """
     annothpa - pulls expression data from the Human Protein Atlas
-    Parameters: data - program-generated annotations for a single variant
+    Parameters: geneid - Ensembl gene id
     Returns: returns expression data
     """
     #expression - list that holds the return data from
-    expression = []
-    i = 0
 
     server = "http://www.proteinatlas.org/"
 
-    #For every gene in the gene list
+    r = requests.get(server + geneid + '.json')
 
-    while i < len(data['genelist']):
-
-        r = requests.get(server + data['genelist'][i]['gene_id'] + '.json')
-
-        #Check if there was data returned
-        if r.status_code == requests.codes.ok:
-            expression.append(r.json())
-
-        i = i + 1
-
-    return expression
+    #Check if there was data returned
+    if r.status_code == requests.codes.ok:
+        return r.json()
+    else:
+        return None
 
 def ensemblsequence(transcriptid, seq):
     server = 'https://rest.ensembl.org'
@@ -521,52 +513,25 @@ def dumpconsequence(anno_vep):
         consequence = None
     return consequence
 
-def dumpensemblgeneid(anno_vep):
-    """
-    dumpensemblgeneid - pull the gene IDs from the JSON data structure
-    Parameters: anno_vep - dictionary/list of the JSON data on the variant
-    Return: list of gene IDs that the variant affects
-    """
+def dumpensembltranscripts(anno_vep):
+    list_return = []
 
-    geneids = []
-    i = 0
-    relevant_transcripts = dumprelevanttranscripts(anno_vep)
-
-    if relevant_transcripts != []:
-        for transcript in relevant_transcripts:
-            #Check if the gene_id is in the current list
-            names = {'gene_id': transcript['gene_id'],
-                    'gene_symbol': transcript['gene_symbol']
-                    }
-
-            if not(names in geneids):
-                geneids.append(names)
-    else:
-        geneids.append(None)
-
-    return geneids
-
-def dumprelevanttranscripts(anno_vep):
-    """
-    dumprelevanttranscripts - pull Ensembl transcript IDs
-    Parameters: anno_vep - dictionary/list of the JSON data on the variant
-    Return: list of relevant transcipts
-    """
-    #list_transcripts - holds all of the relevant transcripts
-    list_transcripts = []
-    nodataflag = True
-
-    #Check if the annotation exists
-    if anno_vep is not None:
-        #Check if 'transcript_consequences' exists
-        if 'transcript_consequences' in anno_vep:
-            nodataflag = False
-
-    #Do for each transcript
-    if nodataflag is False:
+    #Check if data is actually present
+    if anno_vep is not None and 'transcript_consequences' in anno_vep:
+        #Identify number of genes that the variant impacts
+        #Create list of genes that variant impacts
         for transcript in anno_vep['transcript_consequences']:
+            gene = {'gene_id':transcript['gene_id'],
+                    'gene_symbol':transcript['gene_symbol'],
+                    'transcripts':[]
+                    }
+            if gene not in list_return:
+                list_return.append(gene)
+
+        #Go through all of the transcript the variant impacts
+        for transcript in anno_vep['transcript_consequences']:
+            #If the transcript is relevant, add it to appropriate gene
             relevantflag = False
-            #Do for each consequence term
             for term in transcript['consequence_terms']:
                 if (term != 'intron_variant'
                     and term != 'non_coding_transcript_exon_variant'
@@ -578,12 +543,22 @@ def dumprelevanttranscripts(anno_vep):
                     and term != '3_prime_UTR_variant'
                     and term != 'NMD_transcript_variant'):
                     relevantflag = True
-
-            #Append to the list f relevant transcripts if it is relevant
             if relevantflag is True:
-                list_transcripts.append(transcript)
+                for gene in list_return:
+                    if transcript['gene_id'] == gene['gene_id']:
+                        gene['transcripts'].append(transcript)
+        #Remove genes with no relevant transcripts
+        i = 0
+        while i < len(list_return):
+            if len(list_return[i]['transcripts']) == 0:
+                del list_return[i]
+                i = i - 1
+            i = i + 1
 
-    return list_transcripts
+        #Return the list
+        return list_return
+    else:
+        return None
 
 def combineanno(listmvi, listvep, listHGVS):
     """
@@ -622,8 +597,7 @@ def combineanno(listmvi, listvep, listHGVS):
                         'gnomADE':dumpgnomADE(listmvi[i]),
                         'ClinVar':dumpCV(listmvi[i]),
                         'MScon':dumpconsequence(listvep[i]),
-                        'genelist':dumpensemblgeneid(listvep[i]),
-                        'relevanttranscripts':dumprelevanttranscripts(listvep[i])
+                        'genes':dumpensembltranscripts(listvep[i])
                         }))
         i = i + 1
 

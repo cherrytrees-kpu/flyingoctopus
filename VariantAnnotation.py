@@ -87,44 +87,36 @@ def filtercons(listanno):
 
 def filterexpression(listanno):
     list_hpa = []
-    list_notexpressedbrain = []
+    list_notbrainexpressed = []
     list_candidate = []
 
     #Get annotation from Human Protein Atlas
     for anno in listanno:
-        if anno['genelist'][0] is not None:
-            anno_hpa = va.annothpa(anno)
-            list_hpa.append(anno_hpa)
-            data_expression = []
-            #Loop through each gene that had annotations pulled
-            for gene in anno_hpa:
-                    data_expression.append(dict({
-                                                'gene':gene['Gene'],
-                                                'RNAbrd':gene['RNA brain regional distribution']
-                    }))
-            #Add to original annotation structure
-            anno['brain_expression'] = data_expression
-        else:
-            anno['brain_expression'] = None
+        if anno['genes'] is not None:
+            for gene in anno['genes']:
+                anno_hpa = va.annothpa(gene['gene_id'])
+                list_hpa.append(anno_hpa)
+                if anno_hpa is not None:
+                    gene['RNAbrd'] = anno_hpa['RNA brain regional distribution']
+                else:
+                    gene['RNAbrd'] = None
 
     #Filtering
     for anno in listanno:
         notbrainexpressflag = True
-        #Check each gene to see if its detected in brain
-        if anno['brain_expression'] is not None:
-            for gene in anno['brain_expression']:
+        if anno['genes'] is not None:
+            for gene in anno['genes']:
                 if gene['RNAbrd'] != 'Not detected':
                     notbrainexpressflag = False
 
         if notbrainexpressflag is True:
-            list_notexpressedbrain.append(anno)
+            list_notbrainexpressed.append(anno)
         else:
             list_candidate.append(anno)
 
-    #Export the raw annotations from Human Protein Atlas
+    #Export and return
     va.exportanno(list_hpa, 'hpa_annotations.txt')
-
-    return list_notexpressedbrain, list_candidate
+    return list_notbrainexpressed, list_candidate
 
 def getsequences(listanno, basepath):
     for anno in listanno:
