@@ -409,7 +409,7 @@ while EXIT_PROGRAM == False:
 
         LIST_CANDIDATE = list_candidate
 
-        #Export
+        #Export all of the files
         va.exportanno(list_nodata, newpath.as_posix() + '/' + filename_nodata)
         va.exportanno(list_irrelevant, newpath.as_posix() + '/' + filename_irrelevant)
         va.exportanno(list_highfreq, newpath.as_posix() + '/' + filename_highfreq)
