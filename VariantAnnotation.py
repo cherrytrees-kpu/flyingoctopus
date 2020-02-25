@@ -416,6 +416,48 @@ while EXIT_PROGRAM == False:
         va.exportanno(list_notexpressedbrain, newpath.as_posix() + '/' + filename_notexpressedbrain)
         va.exportanno(list_candidate, newpath.as_posix() + '/' + filename_candidate)
 
+        #Export candidate by snp type
+        list_snv = []
+        list_del = []
+        list_ins = []
+        for candiate in list_candidate:
+            if candidate['vartype'] == 'snv':
+                print('snp')
+                list_snv.append(candidate)
+            elif candidate['vartype'] == 'del':
+                print ('del')
+                list_del.append(candidate)
+            elif candidate['vartype'] == 'ins' or candidate['vartype'] == 'delins':
+                print ('delins')
+                list_ins.append(candidate)
+
+        va.exportanno(list_snv,
+                        newpath.as_posix()
+                        + '/'
+                        + 'candidatesnv_'
+                        + str(file_ID)
+                        + '_'
+                        + time
+                        + '.txt'
+                        )
+        va.exportanno(list_del,
+                        newpath.as_posix()
+                        + '/'
+                        + 'candidatedel_'
+                        + str(file_ID)
+                        + '_'
+                        + time
+                        + '.txt'
+                        )
+        va.exportanno(list_ins,
+                        newpath.as_posix()
+                        + '/'
+                        + 'candidateins_'
+                        + str(file_ID)
+                        + '_'
+                        + time
+                        + '.txt'
+                        )
         #Summary
         summaryfile = open(newpath.as_posix() + '/' + filename_summary, 'w')
 
@@ -444,6 +486,15 @@ while EXIT_PROGRAM == False:
                         + '\n'
                         + '# Candidates: '
                         + str(len(list_candidate))
+                        + '\n'
+                        + '# Candidate SNV:'
+                        + str(len(list_snv))
+                        + '\n'
+                        + '# Candidate deletions:'
+                        + str(len(list_del))
+                        + '\n'
+                        + '# Candidate insertions:'
+                        + str(len(list_ins))
                         )
         summaryfile.close()
     elif option == 7:
