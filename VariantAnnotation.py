@@ -420,7 +420,7 @@ while EXIT_PROGRAM == False:
         list_snv = []
         list_del = []
         list_ins = []
-        for candiate in list_candidate:
+        for candidate in list_candidate:
             if candidate['vartype'] == 'snv':
                 print('snp')
                 list_snv.append(candidate)
