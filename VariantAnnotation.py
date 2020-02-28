@@ -119,36 +119,117 @@ def filterexpression(listanno):
     return list_notbrainexpressed, list_candidate
 
 def getsequences(listanno, basepath):
-    for anno in listanno:
-        print(listanno.index(anno))
-        #Make a folder
-        newpath = basepath.joinpath(va.converthgvs(anno['_id']))
-        print(newpath)
-        newpath.mkdir(exist_ok=True)
-        #Do for every transcript
-        for transcript in anno['relevanttranscripts']:
-            print(transcript['transcript_id'])
-            cds = va.ensemblsequence(transcript['transcript_id'], 'cds')
-            cdna = va.ensemblsequence(transcript['transcript_id'], 'cdna')
-            #cds
-            if cds is not None:
-                cdsfile = open(newpath.as_posix()
-                                + '/'
-                                + transcript['transcript_id']
-                                + '_cds.txt',
-                                'w',)
-                cdsfile.write(cds)
-                cdsfile.close()
+    def substitution(transcript, pos, allele, strand):
+        if strand == -1:
+            allele = str(Seq(allele, IUPAC.unambiguous_dna).complement())
+        return transcript[:pos-1] + allele + transcript[pos:]
 
-            #cDNA
-            if cdna is not None:
-                cdnafile = open(newpath.as_posix()
-                                + '/'
-                                + transcript['transcript_id']
-                                + '_cdna.txt',
-                                'w',)
-                cdnafile.write(cdna)
-                cdnafile.close()
+    def insertion(transcript, start, end, insert, strand):
+        if strand == -1:
+            insert = str(Seq(insert, IUPAC.unambiguous_dna).complement())
+        return transcript[:start] + insert + transcript[end:]
+
+    def deletion(transcript, start, end):
+        return transcript[:start-1] + transcript[end:]
+
+    def translation (sequence):
+        if 'N' not in sequence:
+            dna = Seq(sequence, IUPAC.unambiguous_dna)
+            mrna = dna.transcribe()
+            protein = mrna.translate()
+            return str(protein)
+        else:
+            print('Ambiguous nucleotide present, no protein')
+
+    #Do for every variant
+    for anno in listanno:
+        #Holds stats
+        list_stats = []
+        #Make a folder for variant
+        print ('Working on ' + anno['_id'] + '...')
+        variantpath = basepath.joinpath(va.converthgvs(anno['_id']))
+        print(variantpath)
+        variantpath.mkdir(exist_ok=True)
+        #Do for every gene
+        for gene in anno['genes']:
+            #Stats to track
+            list_transcripts = []
+            list_notranscripts = []
+            #Make folder for gene
+            genepath = variantpath.joinpath(gene['gene_id'])
+            genepath.mkdir(exist_ok=True)
+            #Do for every transcript
+            for transcript in gene['transcripts']:
+                list_transcripts.append(transcript['transcript_id'])
+                print('Pulling transcripts for ' + transcript['transcript_id'])
+                cdna = va.ensemblsequence(transcript['transcript_id'], 'cdna')
+                cds = va.ensemblsequence(transcript['transcript_id'], 'cds')
+                #Write cdna and cds
+                va.outputsequence(cdna, transcript['transcript_id'], 'cdna', genepath)
+                va.outputsequence(cds, transcript['transcript_id'], 'cds', genepath)
+                #Get rid of splice_region_variant, TF_binding_site, regulatory_region_variant
+                if cds is not None:
+                    get_protein = True
+                else:
+                    get_protein = False
+                    list_notranscripts.append(transcript['transcript_id'])
+                for term in transcript['consequence_terms']:
+                    if (term == 'splice_region_variant'
+                        or term == 'TF_binding_site'
+                        or term == 'regulatory_region_variant'):
+                        get_protein = False
+                #Get protein sequences
+                if (get_protein is True) and (anno['vartype'] == 'snv'):
+                    vcds = substitution(cds,
+                                        transcript['cds_start'],
+                                        transcript['variant_allele'],
+                                        transcript['strand'],
+                                        )
+                    vprotein = translation(vcds)
+                elif (get_protein is True) and (anno['vartype'] == 'del'):
+                    vcds = deletion(cds,
+                                    transcript['cds_start'],
+                                    transcript['cds_end'],
+                                    )
+                    vprotein = translation(vcds)
+                elif (get_protein is True) and (anno['vartype'] == 'ins' or anno['vartype' == 'delins']):
+                    vcds = insertion(cds,
+                                    transcript['cds_start'],
+                                    transcript['cds_end'],
+                                    transcript['variant_allele'],
+                                    transcript['strand']
+                                    )
+                    vprotein = translation(vcds)
+                #Write proteins
+                if get_protein is True:
+                    protein = translation(cds)
+                    va.outputsequence(protein, transcript['transcript_id'], 'protein', genepath)
+                    va.utputsequence(vprotein, transcript['transcript_id'], 'vprotein', genepath)
+            #Add to the stats document
+            list_stats.append(dict({'gene':gene['gene_id'],
+                                    'transcripts':list_transcripts,
+                                    'no_transcripts':list_notranscripts,
+                                    }))
+        #Write the summary file for the variant
+        summary_file = open(variantpath.as_posix()
+                            + '/'
+                            + va.converthgvs(anno['_id'])
+                            + '_summary.txt'
+                            ,
+                            'w',
+                            )
+        for item in list_stats:
+            summary_file.write(item['gene']
+                                + '\n'
+                                + 'All transcripts:'
+                                + str(item['transcripts'])
+                                + '\n'
+                                + 'No sequence:'
+                                + str(item['no_transcripts'])
+                                + '\n'
+                                )
+
+        summary_file.close()
 
 ##### Program Start ##################################################################
 #GLOBAL VARIABLES

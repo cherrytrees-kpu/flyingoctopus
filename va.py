@@ -1,5 +1,6 @@
 """
-va.py - wrapper for myvariant.info and Ensembl's VEP
+va.py - wrapper for myvariant.info, Ensembl's VEP, the Human Protein Atlas, and
+        Uniprot
 
 """
 ##### Function definitions #####################################################
@@ -242,6 +243,17 @@ def writeanno(listanno, name = "annotated_mutations.txt"):
 
     outputfile.close()
 
+def outputsequence(sequence, id, type, path):
+    sequencefile = open(path.as_posix()
+                    + '/'
+                    + id
+                    + '_'
+                    + type
+                    + '.txt',
+                    'w',)
+    sequencefile.write(str(sequence))
+    sequencefile.close()
+
 ##### Annotation functions #####################################################
 def annotmvi(listHGVS):
     """
@@ -380,7 +392,7 @@ def annothpa(geneid):
         return None
 
 def ensemblsequence(transcriptid, seq):
-    server = 'https://rest.ensembl.org'
+    server = 'https://grch37.rest.ensembl.org'
     ext = '/sequence/id/' + transcriptid + '?'
 
     xheaders={'Content-Type':'application/json'}
@@ -391,6 +403,7 @@ def ensemblsequence(transcriptid, seq):
     if r.status_code == 200:
         return r.json()['seq']
     else:
+        print(seq + ' for ' + transcriptid + ' could not be found.')
         return None
 
 ##### Parsing Functions ########################################################
