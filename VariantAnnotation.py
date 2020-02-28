@@ -206,7 +206,7 @@ def getsequences(listanno, basepath):
                 if get_protein is True:
                     protein = translation(cds)
                     va.outputsequence(protein, transcript['transcript_id'], 'protein', genepath)
-                    va.utputsequence(vprotein, transcript['transcript_id'], 'vprotein', genepath)
+                    va.outputsequence(vprotein, transcript['transcript_id'], 'vprotein', genepath)
             #Add to the stats document
             list_stats.append(dict({'gene':gene['gene_id'],
                                     'transcripts':list_transcripts,
