@@ -13,6 +13,8 @@ import myvariant
 import time
 import va
 import datetime
+from Bio.Seq import Seq
+from Bio.Alphabet import IUPAC
 
 def fullroutine():
     #Get unique job ID name
@@ -583,7 +585,7 @@ while EXIT_PROGRAM == False:
         if len(LIST_CANDIDATE) == 0:
             filename = input('Please enter the name of the file being imported : ')
             LIST_CANDIDATE = va.importanno(filename)
-        va.getsequences(LIST_CANDIDATE, BASEPATH)
+        getsequences(LIST_CANDIDATE, BASEPATH)
     elif option == 8:
         check = input('Are you sure you want to exit? (y/n)')
         if check == 'y':
