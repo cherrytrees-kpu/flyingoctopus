@@ -13,6 +13,8 @@ import myvariant
 import time
 import va
 import datetime
+from Bio.Seq import Seq
+from Bio.Alphabet import IUPAC
 
 def fullroutine():
     #Get unique job ID name
@@ -87,76 +89,149 @@ def filtercons(listanno):
 
 def filterexpression(listanno):
     list_hpa = []
-    list_notexpressedbrain = []
+    list_notbrainexpressed = []
     list_candidate = []
 
     #Get annotation from Human Protein Atlas
     for anno in listanno:
-        if anno['genelist'][0] is not None:
-            anno_hpa = va.annothpa(anno)
-            list_hpa.append(anno_hpa)
-            data_expression = []
-            #Loop through each gene that had annotations pulled
-            for gene in anno_hpa:
-                    data_expression.append(dict({
-                                                'gene':gene['Gene'],
-                                                'RNAbrd':gene['RNA brain regional distribution']
-                    }))
-            #Add to original annotation structure
-            anno['brain_expression'] = data_expression
-        else:
-            anno['brain_expression'] = None
+        if anno['genes'] is not None:
+            for gene in anno['genes']:
+                anno_hpa = va.annothpa(gene['gene_id'])
+                list_hpa.append(anno_hpa)
+                if anno_hpa is not None:
+                    gene['RNAbrd'] = anno_hpa['RNA brain regional distribution']
+                else:
+                    gene['RNAbrd'] = None
 
     #Filtering
     for anno in listanno:
         notbrainexpressflag = True
-        #Check each gene to see if its detected in brain
-        if anno['brain_expression'] is not None:
-            for gene in anno['brain_expression']:
+        if anno['genes'] is not None:
+            for gene in anno['genes']:
                 if gene['RNAbrd'] != 'Not detected':
                     notbrainexpressflag = False
 
         if notbrainexpressflag is True:
-            list_notexpressedbrain.append(anno)
+            list_notbrainexpressed.append(anno)
         else:
             list_candidate.append(anno)
 
-    #Export the raw annotations from Human Protein Atlas
+    #Export and return
     va.exportanno(list_hpa, 'hpa_annotations.txt')
-
-    return list_notexpressedbrain, list_candidate
+    return list_notbrainexpressed, list_candidate
 
 def getsequences(listanno, basepath):
-    for anno in listanno:
-        print(listanno.index(anno))
-        #Make a folder
-        newpath = basepath.joinpath(va.converthgvs(anno['_id']))
-        print(newpath)
-        newpath.mkdir(exist_ok=True)
-        #Do for every transcript
-        for transcript in anno['relevanttranscripts']:
-            print(transcript['transcript_id'])
-            cds = va.ensemblsequence(transcript['transcript_id'], 'cds')
-            cdna = va.ensemblsequence(transcript['transcript_id'], 'cdna')
-            #cds
-            if cds is not None:
-                cdsfile = open(newpath.as_posix()
-                                + '/'
-                                + transcript['transcript_id']
-                                + '_cds.txt',
-                                'w',)
-                cdsfile.write(cds)
-                cdsfile.close()
+    def substitution(transcript, pos, allele, strand):
+        if strand == -1:
+            allele = str(Seq(allele, IUPAC.unambiguous_dna).complement())
+        return transcript[:pos-1] + allele + transcript[pos:]
 
-            #cDNA
-            if cdna is not None:
-                cdnafile = open(newpath.as_posix()
-                                + '/'
-                                + transcript['transcript_id']
-                                + '_cdna.txt',
-                                'w',)
-                cdnafile.write(cdna)
-                cdnafile.close()
+    def insertion(transcript, start, end, insert, strand):
+        if strand == -1:
+            insert = str(Seq(insert, IUPAC.unambiguous_dna).complement())
+        return transcript[:start] + insert + transcript[end:]
+
+    def deletion(transcript, start, end):
+        return transcript[:start-1] + transcript[end:]
+
+    def translation (sequence):
+        if 'N' not in sequence:
+            dna = Seq(sequence, IUPAC.unambiguous_dna)
+            mrna = dna.transcribe()
+            protein = mrna.translate()
+            return str(protein)
+        else:
+            print('Ambiguous nucleotide present, no protein')
+
+    #Do for every variant
+    for anno in listanno:
+        #Holds stats
+        list_stats = []
+        #Make a folder for variant
+        print ('Working on ' + anno['_id'] + '...')
+        variantpath = basepath.joinpath(va.converthgvs(anno['_id']))
+        print(variantpath)
+        variantpath.mkdir(exist_ok=True)
+        #Do for every gene
+        for gene in anno['genes']:
+            #Stats to track
+            list_transcripts = []
+            list_notranscripts = []
+            #Make folder for gene
+            genepath = variantpath.joinpath(gene['gene_id'])
+            genepath.mkdir(exist_ok=True)
+            #Do for every transcript
+            for transcript in gene['transcripts']:
+                list_transcripts.append(transcript['transcript_id'])
+                print('Pulling transcripts for ' + transcript['transcript_id'])
+                cdna = va.ensemblsequence(transcript['transcript_id'], 'cdna')
+                cds = va.ensemblsequence(transcript['transcript_id'], 'cds')
+                #Write cdna and cds
+                va.outputsequence(cdna, transcript['transcript_id'], 'cdna', genepath)
+                va.outputsequence(cds, transcript['transcript_id'], 'cds', genepath)
+                #Get rid of splice_region_variant, TF_binding_site, regulatory_region_variant
+                if cds is not None:
+                    get_protein = True
+                else:
+                    get_protein = False
+                    list_notranscripts.append(transcript['transcript_id'])
+                for term in transcript['consequence_terms']:
+                    if (term == 'splice_region_variant'
+                        or term == 'TF_binding_site'
+                        or term == 'regulatory_region_variant'):
+                        get_protein = False
+                #Get protein sequences
+                if (get_protein is True) and (anno['vartype'] == 'snv'):
+                    vcds = substitution(cds,
+                                        transcript['cds_start'],
+                                        transcript['variant_allele'],
+                                        transcript['strand'],
+                                        )
+                    vprotein = translation(vcds)
+                elif (get_protein is True) and (anno['vartype'] == 'del'):
+                    vcds = deletion(cds,
+                                    transcript['cds_start'],
+                                    transcript['cds_end'],
+                                    )
+                    vprotein = translation(vcds)
+                elif (get_protein is True) and (anno['vartype'] == 'ins' or anno['vartype' == 'delins']):
+                    vcds = insertion(cds,
+                                    transcript['cds_start'],
+                                    transcript['cds_end'],
+                                    transcript['variant_allele'],
+                                    transcript['strand']
+                                    )
+                    vprotein = translation(vcds)
+                #Write proteins
+                if get_protein is True:
+                    protein = translation(cds)
+                    va.outputsequence(protein, transcript['transcript_id'], 'protein', genepath)
+                    va.outputsequence(vprotein, transcript['transcript_id'], 'vprotein', genepath)
+            #Add to the stats document
+            list_stats.append(dict({'gene':gene['gene_id'],
+                                    'transcripts':list_transcripts,
+                                    'no_transcripts':list_notranscripts,
+                                    }))
+        #Write the summary file for the variant
+        summary_file = open(variantpath.as_posix()
+                            + '/'
+                            + va.converthgvs(anno['_id'])
+                            + '_summary.txt'
+                            ,
+                            'w',
+                            )
+        for item in list_stats:
+            summary_file.write(item['gene']
+                                + '\n'
+                                + 'All transcripts:'
+                                + str(item['transcripts'])
+                                + '\n'
+                                + 'No sequence:'
+                                + str(item['no_transcripts'])
+                                + '\n'
+                                )
+
+        summary_file.close()
 
 ##### Program Start ##################################################################
 #GLOBAL VARIABLES
@@ -417,13 +492,55 @@ while EXIT_PROGRAM == False:
 
         LIST_CANDIDATE = list_candidate
 
-        #Export
+        #Export all of the files
         va.exportanno(list_nodata, newpath.as_posix() + '/' + filename_nodata)
         va.exportanno(list_irrelevant, newpath.as_posix() + '/' + filename_irrelevant)
         va.exportanno(list_highfreq, newpath.as_posix() + '/' + filename_highfreq)
         va.exportanno(list_notexpressedbrain, newpath.as_posix() + '/' + filename_notexpressedbrain)
         va.exportanno(list_candidate, newpath.as_posix() + '/' + filename_candidate)
 
+        #Export candidate by snp type
+        list_snv = []
+        list_del = []
+        list_ins = []
+        for candidate in list_candidate:
+            if candidate['vartype'] == 'snv':
+                print('snp')
+                list_snv.append(candidate)
+            elif candidate['vartype'] == 'del':
+                print ('del')
+                list_del.append(candidate)
+            elif candidate['vartype'] == 'ins' or candidate['vartype'] == 'delins':
+                print ('delins')
+                list_ins.append(candidate)
+
+        va.exportanno(list_snv,
+                        newpath.as_posix()
+                        + '/'
+                        + 'candidatesnv_'
+                        + str(file_ID)
+                        + '_'
+                        + time
+                        + '.txt'
+                        )
+        va.exportanno(list_del,
+                        newpath.as_posix()
+                        + '/'
+                        + 'candidatedel_'
+                        + str(file_ID)
+                        + '_'
+                        + time
+                        + '.txt'
+                        )
+        va.exportanno(list_ins,
+                        newpath.as_posix()
+                        + '/'
+                        + 'candidateins_'
+                        + str(file_ID)
+                        + '_'
+                        + time
+                        + '.txt'
+                        )
         #Summary
         summaryfile = open(newpath.as_posix() + '/' + filename_summary, 'w')
 
@@ -452,6 +569,15 @@ while EXIT_PROGRAM == False:
                         + '\n'
                         + '# Candidates: '
                         + str(len(list_candidate))
+                        + '\n'
+                        + '# Candidate SNV:'
+                        + str(len(list_snv))
+                        + '\n'
+                        + '# Candidate deletions:'
+                        + str(len(list_del))
+                        + '\n'
+                        + '# Candidate insertions:'
+                        + str(len(list_ins))
                         )
         summaryfile.close()
     elif option == 7:
@@ -459,7 +585,7 @@ while EXIT_PROGRAM == False:
         if len(LIST_CANDIDATE) == 0:
             filename = input('Please enter the name of the file being imported : ')
             LIST_CANDIDATE = va.importanno(filename)
-        va.getsequences(LIST_CANDIDATE, BASEPATH)
+        getsequences(LIST_CANDIDATE, BASEPATH)
     elif option == 8:
         check = input('Are you sure you want to exit? (y/n)')
         if check == 'y':
