@@ -751,7 +751,7 @@ while EXIT_PROGRAM == False:
                 j = j - 1
             j = j + 1
 
-        outputHGVS(lCandidate, "candidate")
+        outputHGVS(listfiltered), "candidate")
         outputHGVS(lglvariant, "GLvariant")
         end = time.time()
         print('Total run time: ' + str(end - start) + '\n')
