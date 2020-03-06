@@ -10,7 +10,6 @@ import sys
 import pathlib
 import shutil
 import requests
-import myvariant
 import time
 import datetime
 #Third-party modules
