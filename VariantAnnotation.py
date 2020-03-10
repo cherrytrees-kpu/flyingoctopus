@@ -427,7 +427,7 @@ def filterexpression(listanno):
     for anno in listanno:
         if anno['genes'] is not None:
             for gene in anno['genes']:
-                anno_hpa = annotate(gene['gene_id'])
+                anno_hpa = hpa.annotate(gene['gene_id'])
                 list_hpa.append(anno_hpa)
                 if anno_hpa is not None:
                     gene['RNAbrd'] = anno_hpa['RNA brain regional distribution']
@@ -470,10 +470,10 @@ def checkfreq(anno):
 
     overfreqpcflag = False
     if (anno['gnomADG'] != 'N/A') and (anno['gnomADG'] is not None):
-        if anno['gnomADG'] >= 0.001:
+        if anno['gnomADG'] >= 0.01:
             overfreqpcflag = True
     if (anno['gnomADE'] != 'N/A') and (anno['gnomADE'] != None):
-        if anno['gnomADE'] >= 0.001:
+        if anno['gnomADE'] >= 0.01:
             overfreqpcflag = True
 
     return overfreqpcflag
@@ -652,7 +652,6 @@ def getsequences(listanno, basepath):
 
         summary_file.close()
 
-
 ##### Program Start ##################################################################
 #GLOBAL VARIABLES
 EXIT_PROGRAM = False
@@ -751,7 +750,7 @@ while EXIT_PROGRAM == False:
                 j = j - 1
             j = j + 1
 
-        outputHGVS(listfiltered), "candidate")
+        outputHGVS(listfiltered, "candidate")
         outputHGVS(lglvariant, "GLvariant")
         end = time.time()
         print('Total run time: ' + str(end - start) + '\n')
