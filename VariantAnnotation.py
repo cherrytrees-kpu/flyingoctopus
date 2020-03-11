@@ -617,7 +617,8 @@ def getsequences(listanno, basepath):
                 for term in transcript['consequence_terms']:
                     if (term == 'splice_region_variant'
                         or term == 'TF_binding_site'
-                        or term == 'regulatory_region_variant'):
+                        or term == 'regulatory_region_variant'
+                        or term == 'splice_donor_variant'):
                         get_protein = False
                 #Get protein sequences
                 if (get_protein is True) and (anno['vartype'] == 'snv'):
