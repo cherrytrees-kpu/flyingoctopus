@@ -14,6 +14,7 @@ import time
 import datetime
 #Third-party modules
 import myvariant
+from openpyxl import Workbook
 from Bio.Seq import Seq
 from Bio.Alphabet import IUPAC
 #Developed modules
@@ -258,6 +259,25 @@ def outputsequence(sequence, id, type, path):
                     'w',)
     sequencefile.write(str(sequence))
     sequencefile.close()
+def exportexcel(listcandidate):
+    #Time
+    now = datetime.datetime.now()
+    time = now.strftime('%y%m%d-%H%M%S')
+    #Job ID
+    file_ID = input('Enter a job ID: ')
+
+    #Create workbook
+    wb = Workbook()
+    filename = 'candidate_' + file_ID + '_' + time + '.xlsx'
+    ws = wb.active
+    ws.title = 'Results'
+
+    #Write the header
+
+
+    #Save
+    wb.save(filename = filename)
+
 #Parsing functions
 def dumpvartype(idHGVS):
     """
@@ -597,7 +617,8 @@ def getsequences(listanno, basepath):
                 for term in transcript['consequence_terms']:
                     if (term == 'splice_region_variant'
                         or term == 'TF_binding_site'
-                        or term == 'regulatory_region_variant'):
+                        or term == 'regulatory_region_variant'
+                        or term == 'splice_donor_variant'):
                         get_protein = False
                 #Get protein sequences
                 if (get_protein is True) and (anno['vartype'] == 'snv'):
@@ -882,6 +903,12 @@ while EXIT_PROGRAM == False:
                 print('Please try another ID: ')
             else:
                 file_created = True
+
+        #Get combine annotations
+        #Open HGVS ID file that will be annotated
+        filename = input('Please enter the name of the file listing HGVS IDs to be annotated: ')
+        listHGVS = importHGVS(filename)
+        LIST_ANNO = combineanno(LIST_MVI, LIST_VEP, listHGVS)
 
         #Filenames
         filename_nodata = 'nodata_' + str(file_ID) + '_' + time + '.txt'
