@@ -718,9 +718,8 @@ while EXIT_PROGRAM == False:
 
         filename = input('Please enter the .vcf file to extract HGVS from: ')
         vcftoHGVS(filename)
-
     #2) Generate filtered HGVS file
-    if option == 2:
+    elif option == 2:
         #Variables
         start = time.time()
         listaffected = []
@@ -777,6 +776,7 @@ while EXIT_PROGRAM == False:
         print('Total run time: ' + str(end - start) + '\n')
 
     #3) Annotation
+    #3) Annotation
     elif option == 3:
         exitannotation = False
         while exitannotation == False:
@@ -814,21 +814,24 @@ while EXIT_PROGRAM == False:
             elif optionannotation == 3:
                 exitannotation = True
                 print('')
-
+    #4) Import data
     elif option == 4:
         exitimport = False
         while exitimport == False:
+            #Menu
             print ('1) Import myvariant.info annotation data')
             print ('2) Import VEP annotation data')
             print ('3) Import program-generated data')
-            print ('4) Return to main menu')
+            print ('4) Import candidate data')
+            print ('5) Return to main menu')
 
+            #Accept user input
             optionimport = int(input('Select option: '))
-
             while (optionimport != 1
                    and optionimport !=2
                    and optionimport !=3
-                   and optionimport !=4):
+                   and optionimport !=4
+                   ):
                 optionimport = int(input('Invalid selection; please select one of the options: '))
 
             if optionimport == 1:
@@ -845,9 +848,13 @@ while EXIT_PROGRAM == False:
                 LIST_ANNO = importanno(filename)
                 print('Data imported.' + '\n')
             elif optionimport == 4:
+                filename = input('Please enter the name of the file being imported : ')
+                LIST_CANDIDATE = importanno(filename)
+                print('Data imported.' + '\n')
+            elif optionimport == 5:
                 exitimport = True
                 print('')
-
+    #5) Export data
     elif option == 5:
         exitexport = False
         while exitexport == False:
@@ -876,7 +883,7 @@ while EXIT_PROGRAM == False:
             elif optionexport == 4:
                 exitexport = True
                 print('')
-
+    #6) Process data
     elif option == 6:
         #Lists
         list_nodata = []
@@ -1026,12 +1033,14 @@ while EXIT_PROGRAM == False:
                         + str(len(list_ins))
                         )
         summaryfile.close()
+    #7) Get Ensembl CDS sequences
     elif option == 7:
         #Import annotations if not already in program:
         if len(LIST_CANDIDATE) == 0:
             filename = input('Please enter the name of the file being imported : ')
             LIST_CANDIDATE = importanno(filename)
         getsequences(LIST_CANDIDATE, BASEPATH)
+    #8) Exit
     elif option == 8:
         check = input('Are you sure you want to exit? (y/n)')
         if check == 'y':
