@@ -259,24 +259,6 @@ def outputsequence(sequence, id, type, path):
                     'w',)
     sequencefile.write(str(sequence))
     sequencefile.close()
-def exportexcel(listcandidate):
-    #Time
-    now = datetime.datetime.now()
-    time = now.strftime('%y%m%d-%H%M%S')
-    #Job ID
-    file_ID = input('Enter a job ID: ')
-
-    #Create workbook
-    wb = Workbook()
-    filename = 'candidate_' + file_ID + '_' + time + '.xlsx'
-    ws = wb.active
-    ws.title = 'Results'
-
-    #Write the header
-
-
-    #Save
-    wb.save(filename = filename)
 
 #Parsing functions
 def dumpvartype(idHGVS):
@@ -672,6 +654,93 @@ def getsequences(listanno, basepath):
                                 )
 
         summary_file.close()
+def exportexcel(listanno):
+    #Variables
+    workbook = Workbook()
+    worksheet = workbook.active
+    #Do for every annotation
+    for anno in listanno:
+        idHGVS = converthgvs(anno['_id'])
+        sheet = workbook.create_sheet(idHGVS[0:31])
+
+        #Variant annotations
+        #Write the header
+        sheet.cell(row=1, column=1).value = 'HGVS'
+        sheet.cell(row=1, column=2).value = 'RSID'
+        sheet.cell(row=1, column=3).value = 'Variant Type'
+        sheet.cell(row=1, column=4).value = 'gnomADG'
+        sheet.cell(row=1, column=5).value = 'gnomADE'
+        sheet.cell(row=1, column=6).value = 'ClinVar Reports'
+        sheet.cell(row=1, column=7).value = 'Most Severe Consequence'
+        #Write Data
+        sheet.cell(row=2, column=1).value = anno['_id']
+        sheet.cell(row=2, column=2).value = anno['rsid']
+        sheet.cell(row=2, column=3).value = anno['vartype']
+        sheet.cell(row=2, column=4).value = anno['gnomADG']
+        sheet.cell(row=2, column=5).value = anno['gnomADE']
+        sheet.cell(row=2, column=6).value = str(anno['ClinVar'])
+        sheet.cell(row=2, column=7).value = anno['MScon']
+
+        r_index = 4
+        c_index = 1
+
+        #Do for every gene in the annotation
+        for gene in anno['genes']:
+            #Get Uniprot data for the gene
+            data_uniprot = uniprot.annotate(gene['gene_id'])
+            c_index = 1
+            #Write the gene symbol and gene id
+            sheet.cell(row=r_index, column=c_index).value = gene['gene_symbol']
+            sheet.cell(row=r_index, column=c_index + 1).value = gene['gene_id']
+            r_index = r_index + 1
+            if data_uniprot is not None:
+                sheet.cell(row=r_index, column=c_index).value = 'Protein name'
+                sheet.cell(row=r_index, column=c_index + 1).value = data_uniprot['protein_name']
+                sheet.cell(row=r_index, column=c_index + 2).value = data_uniprot['acc']
+                r_index = r_index + 1
+                sheet.cell(row=r_index, column=c_index).value = 'Function'
+                sheet.cell(row=r_index, column=c_index + 1).value = data_uniprot['function']
+                r_index = r_index + 1
+            #Write the transcript information
+            for transcript in gene['transcripts']:
+                #Reset column index
+                c_index = 1
+                #Get the key values
+                keys_all = list(transcript.keys())
+                keys = []
+                #Get desired keys
+                keys.append('transcript_id')
+                keys.append('strand')
+                keys.append('consequence_terms')
+                keys.append('variant_allele')
+                if 'cdna_start' in keys_all:
+                    keys.append('cdna_start')
+                    keys.append('cdna_end')
+                if 'cds_start' in keys_all:
+                    keys.append('cds_start')
+                    keys.append('cds_end')
+                    keys.append('codons')
+                    keys.append('amino_acids')
+                    keys.append('protein_start')
+                    keys.append('protein_end')
+                #Output transcript information
+                for key in keys:
+                    sheet.cell(row=r_index, column = c_index).value = key
+                    sheet.cell(row=r_index + 1, column = c_index).value = str(transcript[key])
+                    c_index = c_index + 1
+                r_index = r_index + 2
+            #Write rest of uniprot information
+            if data_uniprot is not None:
+                for feature in data_uniprot['features']:
+                    keys = list(feature.keys())
+                    c_index = 1
+                    for key in keys:
+                        sheet.cell(row=r_index, column = c_index).value = key
+                        sheet.cell(row=r_index + 1, column = c_index).value = str(feature[key])
+                        c_index = c_index + 1
+                    r_index = r_index + 2
+
+        workbook.save(filename = 'test.xlsx')
 
 ##### Program Start ##################################################################
 #GLOBAL VARIABLES
@@ -696,7 +765,8 @@ while EXIT_PROGRAM == False:
     print('5) Export data')
     print('6) Process data')
     print('7) Get Ensembl CDS sequences')
-    print('8) Exit (modules still loaded)')
+    print('8) Generate spreadsheet for analysis')
+    print('9) Exit (modules still loaded)')
 
     #Accept input from user
     option = int(input('Select option: '))
@@ -709,6 +779,7 @@ while EXIT_PROGRAM == False:
            and option != 6
            and option != 7
            and option != 8
+           and option != 9
            ):
         option = int(input('Invalid selection; please select one of the options: '))
     print('')
@@ -718,6 +789,8 @@ while EXIT_PROGRAM == False:
 
         filename = input('Please enter the .vcf file to extract HGVS from: ')
         vcftoHGVS(filename)
+
+
     #2) Generate filtered HGVS file
     elif option == 2:
         #Variables
@@ -774,8 +847,6 @@ while EXIT_PROGRAM == False:
         outputHGVS(lglvariant, "GLvariant")
         end = time.time()
         print('Total run time: ' + str(end - start) + '\n')
-
-    #3) Annotation
     #3) Annotation
     elif option == 3:
         exitannotation = False
@@ -1041,8 +1112,13 @@ while EXIT_PROGRAM == False:
             filename = input('Please enter the name of the file being imported : ')
             LIST_CANDIDATE = importanno(filename)
         getsequences(LIST_CANDIDATE, BASEPATH)
-    #8) Exit
+    #8) Generate spreadsheet for analysis
     elif option == 8:
+        filename  = input('Please enter file to process: ')
+        list_output = importanno(filename)
+        exportexcel(list_output)
+    #9) Exit
+    elif option == 9:
         check = input('Are you sure you want to exit? (y/n)')
         if check == 'y':
             EXIT_PROGRAM = True

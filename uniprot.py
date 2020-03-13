@@ -79,21 +79,25 @@ def uniprotacc(geneid):
     else:
         print('ID did not map.')
 
-def annotate(anno):
+def annotate(gene_id):
     #Variables
     list_data = []
-    #Get the Uniprot IDs
-    for gene in anno['genes']:
-        list_unip = uniprotacc(gene['gene_id'])
-        #Get Uniprot data
-        for unip in list_unip:
-            xml = retrievexml(unip)
-            data = uniprotparse(xml)
-            data['acc'] = unip
-            data['gene_id'] = gene['gene_id']
-            if data['dataset'] == 'Swiss-Prot':
-                'Added to data list'
-                list_data.append(data)
-            else:
-                'Not in Swiss-Prot'
-    return list_data
+    list_unip = uniprotacc(gene_id)
+    print(gene_id)
+    #Get Uniprot data
+    for unip in list_unip:
+        xml = retrievexml(unip)
+        data = uniprotparse(xml)
+        data['acc'] = unip
+        data['gene_id'] = 'gene_id'
+        if data['dataset'] == 'Swiss-Prot':
+            print('Added to data list')
+            list_data.append(data)
+        else:
+            print('Not in Swiss-Prot')
+    if len(list_data) == 1:
+        return list_data[0]
+    elif len(list_data) == 0:
+        return None
+    else:
+        print('Multiple entries found for ' + str(gene_id))
