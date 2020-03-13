@@ -831,6 +831,7 @@ while EXIT_PROGRAM == False:
                    and optionimport !=2
                    and optionimport !=3
                    and optionimport !=4
+                   and optionimport !=5
                    ):
                 optionimport = int(input('Invalid selection; please select one of the options: '))
 
