@@ -49,7 +49,7 @@ def uniprotparse(xml):
     try:
         protein_name = tree[0].find('{http://uniprot.org/uniprot}protein').find('{http://uniprot.org/uniprot}recommendedName').find('{http://uniprot.org/uniprot}fullName').text
     except AttributeError:
-        print ('No data')
+        print ('No protein name')
         protein_name = None
     #Pull dataset
     dataset = tree[0].attrib.get('dataset')
