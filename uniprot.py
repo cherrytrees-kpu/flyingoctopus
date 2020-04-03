@@ -4,8 +4,11 @@ uniprot.py - code for Uniprot data processing and handling
 
 """
 import requests
+from ratelimit import limits, sleep_and_retry
 import xml.etree.ElementTree as ET
 
+@sleep_and_retry
+@limits(calls=1, period=10)
 def retrievexml(id_uniprot):
     #Server
     server = 'http://uniprot.org/uniprot/'
