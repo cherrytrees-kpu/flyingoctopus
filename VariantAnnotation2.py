@@ -18,7 +18,7 @@ def main():
     def generatefiltermenu(main_menu):
         filter_menu = ConsoleMenu()
         filterstep1 = FunctionItem('Filter by affected and control individuals', filteraffected, [currenthgvs])
-        filterstep2 = FunctionItem('Filter by gene consequence', filtercons, [mvianno, vepanno])
+        filterstep2 = FunctionItem('Filter by gene consequence', filtercons, [currenthgvs, vepanno])
         filter_menu.append_item(filterstep1)
         filter_menu.append_item(filterstep2)
         return SubmenuItem('Filter variants', filter_menu, main_menu)
@@ -98,7 +98,13 @@ def filteraffected(currenthgvs):
     va.outputHGVS(list_gl, name = "candidate")
     currenthgvs = listfiltered
 def filtercons(listhgvs=[], vepanno=[]):
-    #If there's no data, annotate
+    #Check for HGVS data; if none, import
+    if listhgvs == []:
+        filename = input ('Please enter name of file containing HGVS IDs of variants to be analyzed: ')
+        listhgvs = importHGVS(filename)
+    #Check for VEP annotation data
+
+
     if vepanno == []:
         print('No data')
     else:
