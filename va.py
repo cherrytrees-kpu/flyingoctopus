@@ -28,7 +28,6 @@ def importHGVS(filename):
             inputfile_open = True
         except IOError:
             print('File not found.\n')
-
             filename = input('Re-enter filename: ')
 
     #Import data into listHGVS
@@ -113,12 +112,12 @@ def outputHGVS(listHGVS, name = ""):
     i = 0
 
     #Accept name for output file from user
-    if name != "":
+    if name == "":
         name = input('Please enter an identifier for your file: ')
     outputfile = open('HGVS_' + name + '.txt', 'w')
 
     #Write to file
-    while(len(listHGVS)) > index:
+    while(len(listHGVS)) > i:
         outputfile.write(listHGVS[i])
         if i != (len(listHGVS)-1):
             outputfile.write('\n')
@@ -341,70 +340,93 @@ def filteraffected(listaffected, listcontrol):
     listcontrol - list - contains the list of HGVS ids of unaffected individuals
     Returns: list containing candidate mutations only
     """
-    i = 0
+    def binarysearch(items, desired_item, start=0, end=None):
+        #Assign variables
+        if end == None:
+            end = len(items)
+        if start == end:
+            return -1
+
+        pos = int((end - start) // 2 + start)
+
+        if desired_item == items[pos]:
+            return pos
+        elif desired_item > items[pos]:
+            return binarysearch(items, desired_item, start=(pos + 1), end=end)
+        else: # desired_item < items[pos]:
+            return binarysearch(items, desired_item, start=start, end=pos)
+    #Variables
     listfiltered = []
-
     print('Filtering starting...')
-
-    while i < len(listaffected[0]):
+    for variant in listaffected[0]:
         candidate = True
-
         #Check if HGVS is in all listAffected. If not, set candidate to false
         for a in listaffected:
-            if (listaffected[0][i] in a) == False:
+            if binarysearch(a, variant, start = 0, end = None) == -1:
                 candidate = False
-
         #Check if HGVS is in listControl. If yes, set candidate to False
         for c in listcontrol:
-            if listaffected[0][i] in c:
+            if binarysearch(c, variant, start = 0, end = None) != -1:
                 candidate = False
-
         #Write to file
         if candidate == True:
-            listfiltered.append(listaffected[0][i].strip('\n'))
-
-        if i%1000 == 0:
-            print(str(i) + '/' + str(len(listaffected[0])) + ' completed...')
-
-        i = i + 1
-
+            listfiltered.append(variant)
+        #Index
+        if listaffected[0].index(variant)%1000 == 0:
+            print(str(listaffected[0].index(variant)) + '/' + str(len(listaffected[0])) + ' completed...')
     print('Filtering completed.')
     return listfiltered
-def filternodata(listanno):
-    list_nodata = []
-    list_candidate = []
-
-    for anno in listanno:
-        nodata = checknodata(anno)
-        if nodata is True:
-            list_nodata.append(anno)
-        elif nodata is False:
-            list_candidate.append(anno)
-
-    return list_nodata, list_candidate
 def filterfreq(listanno):
+    def checkfreq(anno):
+        """
+        checkfreq - checks if variant above the frequency cut off
+        Parameters: data - variant and its associated annotations
+        Returns: True or False
+        """
+        overfreqpcflag = False
+        if (anno['gnomADG'] != 'N/A') and (anno['gnomADG'] is not None):
+            if anno['gnomADG'] >= 0.01:
+                overfreqpcflag = True
+        if (anno['gnomADE'] != 'N/A') and (anno['gnomADE'] is not None):
+            if anno['gnomADE'] >= 0.01:
+                overfreqpcflag = True
+        return overfreqpcflag
+    #Lists to return
     list_overfreq = []
     list_candidate = []
-
     for anno in listanno:
         overfreq = checkfreq(anno)
         if overfreq is True:
             list_overfreq.append(anno)
         elif overfreq is False:
             list_candidate.append(anno)
-
     return list_overfreq, list_candidate
 def filtercons(listanno):
+    def checkcons(anno):
+        """
+        checkcons - checks if the variant is relevant
+        Parameters: data - variant and its associated annotations
+        Returns: True or False
+        """
+        nonrelevantflag = False
+        if (anno['MScon'] == 'intron_variant'
+            or anno['MScon'] == 'non_coding_transcript_exon_variant'
+            or anno['MScon'] == 'upstream_gene_variant'
+            or anno['MScon'] == 'downstream_gene_variant'
+            or anno['MScon'] == 'synonymous_variant'
+            or anno['MScon'] == '5_prime_UTR_variant'
+            or anno['MScon'] == '3_prime_UTR_variant'
+            or anno['MScon'] == 'intergenic_variant'):
+            nonrelevantflag = True
+        return nonrelevantflag
     list_irrelevant = []
     list_candidate = []
-
     for anno in listanno:
         irrelevant = checkcons(anno)
         if irrelevant is True:
             list_irrelevant.append(anno)
         elif irrelevant is False:
             list_candidate.append(anno)
-
     return list_irrelevant, list_candidate
 def filterexpression(listanno):
     list_hpa = []
@@ -438,52 +460,7 @@ def filterexpression(listanno):
     #Export and return
     exportanno(list_hpa, 'hpa_annotations.txt')
     return list_notbrainexpressed, list_candidate
-def checknodata(anno):
-    """
-    checknodata - checks if variant has any data
-    Parameters: data - variant and its associated annotations
-    Returns: True or False
-    """
-    nodataflag = False
-    if anno['MScon'] == 'N/A':
-        nodataflag = True
 
-    return nodataflag
-def checkfreq(anno):
-    """
-    checkfreq - checks if variant above the frequency cut off
-    Parameters: data - variant and its associated annotations
-    Returns: True or False
-    """
-
-    overfreqpcflag = False
-    if (anno['gnomADG'] != 'N/A') and (anno['gnomADG'] is not None):
-        if anno['gnomADG'] >= 0.01:
-            overfreqpcflag = True
-    if (anno['gnomADE'] != 'N/A') and (anno['gnomADE'] != None):
-        if anno['gnomADE'] >= 0.01:
-            overfreqpcflag = True
-
-    return overfreqpcflag
-def checkcons(anno):
-    """
-    checkcons - checks if the variant is relevant
-    Parameters: data - variant and its associated annotations
-    Returns: True or False
-    """
-    nonrelevantflag = False
-
-    if (anno['MScon'] == 'intron_variant'
-        or anno['MScon'] == 'non_coding_transcript_exon_variant'
-        or anno['MScon'] == 'upstream_gene_variant'
-        or anno['MScon'] == 'downstream_gene_variant'
-        or anno['MScon'] == 'synonymous_variant'
-        or anno['MScon'] == '5_prime_UTR_variant'
-        or anno['MScon'] == '3_prime_UTR_variant'
-        or anno['MScon'] == 'intergenic_variant'):
-        nonrelevantflag = True
-
-    return nonrelevantflag
 #Processing functions
 def combineanno(listmvi, listvep, listHGVS):
     """
