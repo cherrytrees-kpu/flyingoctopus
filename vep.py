@@ -27,6 +27,7 @@ def annotate(listHGVS):
     server = "http://grch37.rest.ensembl.org"
     ext = "/vep/human/hgvs"
     headers={ "Content-Type" : "application/json", "Accept" : "application/json"}
+    parameters = {"canonical":"1", "uniprot":"1"}
 
     #listvep - will store all of the data
     listvep = []
@@ -43,7 +44,7 @@ def annotate(listHGVS):
         p_rangeHGVS = str(rangeHGVS).replace("'", '"')
 
         #Retrieval of data from VEP REST API
-        r = requests.post(server+ext, headers=headers, data=('{ "hgvs_notations" : ' + p_rangeHGVS + ' }'))
+        r = requests.post(server+ext, headers=headers, data=('{ "hgvs_notations" : ' + p_rangeHGVS + ' }'), params = parameters)
 
         #Error handling
         if not r.ok:
