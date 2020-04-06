@@ -7,20 +7,40 @@ hpa.py - code for processing data from the Human Protein Atlas
 import requests
 
 #Function definitions
-def annotate(geneid):
+def gethpa(geneid):
     """
     annothpa - pulls expression data from the Human Protein Atlas
     Parameters: geneid - Ensembl gene id
     Returns: returns expression data
     """
-    #expression - list that holds the return data from
 
     server = "http://www.proteinatlas.org/"
 
-    r = requests.get(server + geneid + '.json')
+    anno = None
 
-    #Check if there was data returned
-    if r.status_code == requests.codes.ok:
-        return r.json()
+    #Get the annotation
+    try:
+        r = requests.get(server + geneid + '.json')
+    except ConnectionError:
+        print('Connection failed! Data for gene not retrieved.')
+        print('Trying again after 10 seconds.....')
+        time.sleep(10)
+        try:
+            r = requests.get(server + geneid + '.json')
+        except ConnectionError:
+            print('Connection failed again! Data for gene not retrieved, try again later.')
+    except requests.exceptions.HTTPError:
+        print('No HPA data available for '+ geneid +'.')
     else:
-        return None
+        anno = r.json()
+    finally:
+        return anno
+
+def annotate(annotated_variants, getfromfile = False):
+    """
+    annotate - pulls expression data from the Human Protein Atlas
+    Parameters: listvariants - list of variants
+    Returns: returns with data
+    """
+    if getfromfile == False:
+        print('yes')

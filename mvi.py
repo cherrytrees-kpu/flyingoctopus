@@ -41,6 +41,22 @@ def annotate(listHGVS):
 
     return listmvi
 
+def getmvi(idHGVS, mv = myvariant.MyVariantInfo()):
+    anno = mv.getvariant(idHGVS, fields = ['dbsnp.rsid',
+                                        'dbsnp.alleles',
+                                        'dbsnp.vartype',
+                                        'dbsnp.gene',
+                                        'clinvar',
+                                        'gnomad_genome.af',
+                                        'gnomad_exome.af',
+                                        'dbnsfp.ensembl',
+                                        'dbnsfp.uniprot',
+                                        'dbnsfp.polyphen2',
+                                        'dbnsfp.sift',
+                                        'dbnsfp.provean',
+                                        ])
+    return anno
+
 def dumpCV(anno_mvi):
     """
     dumpCV - pull ClinVar data from the JSON data structure

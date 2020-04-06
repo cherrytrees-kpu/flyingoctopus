@@ -5,108 +5,39 @@ vep.py - code for processing data from Ensembl's Variant Effect Predictor
 """
 #Imported modules
 import time
+from ratelimit import limits, sleep_and_retry
 import datetime
 import requests
 
 #Function definitions
-def annotate(listHGVS):
-    """
-    annotvep - from a list of HGVS IDs, retrieve all VEP annotations
-    Paramters:
-    lc - list - list of HGVS ids
-    Return: a list of dictionaries of VEP data
-    """
-    #Processing time tracker
-    start = time.time()
-
-    #indexes for list traversal
-    i = 0
-    u = 200
-
+@sleep_and_retry
+@limits(calls=55000, period=3600)
+def getvep(idHGVS):
     #VEP REST API
     server = "http://grch37.rest.ensembl.org"
-    ext = "/vep/human/hgvs"
+    ext = "/vep/human/hgvs/"
     headers={ "Content-Type" : "application/json", "Accept" : "application/json"}
+    parameters = {"canonical":"1", "uniprot":"1"}
 
-    #listvep - will store all of the data
-    listvep = []
+    anno = None
 
-    #Annotation process
-    print('Initiating annotation...')
-    while i < len(listHGVS):
-
-        #Retrieve 200 HGVS IDs - maximum for the batch query to the VEP REST API
-        if u != (len(listHGVS) - 1):
-            rangeHGVS = listHGVS[i:u]
-        if u == (len(listHGVS) - 1):
-            rangeHGVS = listHGVS[i:]
-        p_rangeHGVS = str(rangeHGVS).replace("'", '"')
-
-        #Retrieval of data from VEP REST API
-        r = requests.post(server+ext, headers=headers, data=('{ "hgvs_notations" : ' + p_rangeHGVS + ' }'))
-
-        #Error handling
-        if not r.ok:
-            r.raise_for_status()
-            sys.exit()
-
-        #Store as list of dictionaries
-        decoded = r.json()
-
-        #Check for missing annotations
-        if len(rangeHGVS) != len(decoded):
-            print(str(len(rangeHGVS)
-                    - len(decoded))
-                    + ' annotations are missing')
-            try:
-                q = 0
-                for idHGVS in rangeHGVS:
-                    if rangeHGVS.index(idHGVS) < len(decoded):
-                        if idHGVS != decoded[q]['id']:
-                            decoded.insert(rangeHGVS.index(idHGVS), None)
-                        q = q + 1
-
-                    if rangeHGVS.index(hgvs) >= len(decoded):
-                        decoded.append(None)
-            except:
-                print('Issue between '
-                        + str(rangeHGVS[0])
-                        + 'and '
-                        + str(rangeHGVS[len(rangeHGVS)-1]))
-                print(len(decoded))
-
-        #Add these results to annot list
-        for anno in decoded:
-            listvep.append(anno)
-
-        print (str(u) + ' out of ' + str(len(listHGVS)) + ' completed...')
-
-        i = i + 200
-        u = u + 200
-
-        if u > len(listHGVS):
-            u = len(listHGVS) - 1
-
-    #Processing time tracker
-    end = time.time()
-    print('Processing time: ' + str(end - start))
-
-    return listvep
-
-def dumpconsequence(anno_vep):
-    """
-    dumpconsequence - pull the most severe consequence from the JSON data structure
-    Parameters: anno_vep - dictionary/list of the JSON data on the variant
-    Return: most severe consequence
-    """
-
-    consequence = ""
-
-    if anno_vep is not None:
-        consequence = anno_vep['most_severe_consequence']
+    #Get the annotation
+    try:
+        r = requests.get(server+ext+idHGVS, headers=headers, params = parameters)
+    except ConnectionError:
+        print('Connection failed! Data for variant not retrieved.')
+        print('Trying again after 10 seconds.....')
+        time.sleep(10)
+        try:
+            r = requests.get(server+ext+idHGVS, headers=headers, params = parameters)
+        except ConnectionError:
+            print('Connection failed again! Data for variant not retrieved, try again later.')
+    except requests.exceptions.HTTPError:
+        print('No data available for '+ idHGVS +'.')
     else:
-        consequence = None
-    return consequence
+        anno = r.json()
+    finally:
+        return anno
 
 def dumpensembltranscripts(anno_vep):
     list_return = []
@@ -169,3 +100,27 @@ def ensemblsequence(transcriptid, seq):
     else:
         print(seq + ' for ' + transcriptid + ' could not be found.')
         return None
+
+def parsevepanno(data_variant, vepanno):
+    def getconsequence(vepanno):
+        """
+        getconsequence - pull the most severe consequence from the JSON data structure
+        Parameters: anno_vep - dictionary/list of the JSON data on the variant
+        Return: most severe consequence
+        """
+        return vepanno['most_severe_consequence']
+    def getgenes(vepanno):
+        #Determine if the gene does affect transcripts
+        if 'transcript_consequences' in vepanno:
+            set_genes = set()
+            for transcript in vepanno['transcript_consequences']:
+                set_genes.add(transcript['gene_id']+'/'+transcript['gene_symbol'])
+            return list(set_genes)
+        else:
+            print('Does not affect gene sequence.')
+
+    data_variant['MScon'] = dumpconsequence(vepanno)
+    listgenes = getgenes(vepanno)
+    data_variant['genes'] = []
+    for gene in listgenes:
+        data_variant['genes'].append({'gene':gene.split('/')[1], 'gene_id':gene.split('/')[0]})
