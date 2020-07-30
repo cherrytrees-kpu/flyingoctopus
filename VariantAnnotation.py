@@ -131,7 +131,7 @@ def outputHGVS(listHGVS, name = ""):
     outputfile = open('HGVS_' + name + '.txt', 'w')
 
     #Write to file
-    while(len(listHGVS)) > index:
+    while(len(listHGVS)) > i:
         outputfile.write(listHGVS[i])
         if i != (len(listHGVS)-1):
             outputfile.write('\n')
