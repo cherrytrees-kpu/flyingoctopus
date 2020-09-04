@@ -12,7 +12,7 @@ def retrievexml(id_uniprot):
     #Pulling data
     r = requests.get(server + id_uniprot + '.xml')
     #Checking if all is good
-    if r.status_code == requests.codes.ok:
+    if r.status_code == 200:
         print('Data successfully accessed.')
     else:
         print('Data not retrieved.')
@@ -68,7 +68,7 @@ def uniprotacc(geneid):
     #Get the Uniprot IDs
     r = requests.get(server, params = map_parameters)
     #Parse data
-    if r.status_code == requests.codes.ok:
+    if r.status_code == 200:
         data = ((r.text).strip('\n')).split('\n')
         del data[0]
         list_UniP = []

@@ -17,10 +17,19 @@ def annotate(geneid):
 
     server = "http://www.proteinatlas.org/"
 
-    r = requests.get(server + geneid + '.json')
-
-    #Check if there was data returned
-    if r.status_code == requests.codes.ok:
-        return r.json()
+    try:
+        r = requests.get(server + geneid + '.json', timeout=20)
+    except requests.exceptions.ConnectionError:
+        print('ConnectionError')
+        try:
+            r = requests.get(server + geneid + '.json', timeout=20)
+        except requests.exceptions.ConnectionError:
+            print('Connection Error again')
+            return "connectionError"
+        else: 
+            return r.json()
+    except requests.exceptions.TooManyRedirects:
+        print('Too Many Redirects')
+        return 'tooManyRedirects'
     else:
-        return None
+        return r.json()
